@@ -5,7 +5,7 @@ http://www.hexastorm.com/
 
 A process known as Laser Direct Imaging.
 
-![First Test][case-pic]
+<img src="https://www.hexastorm.com/static/laserscanner.jpg" align="center" height="300"/>
 
 The code is based upon [LDGraphy](http://ldgraphy.org/).
 
