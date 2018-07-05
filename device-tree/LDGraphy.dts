@@ -29,27 +29,29 @@
         __overlay__ {
             beagleg_gpio_pins: LDGraphy_Pins {
                 pinctrl-single,pins = <
-		    /* Pixel data */
-		    0x158 0x07 /* GPIO_0[4] ; P9.18 Polygon Mirror Clock */
-		    0x15c 0x07 /* GPIO_0[5] ; P9.17 Laser Data; pulldown */
-		    0x04c 0x17 /* GPIO_1[19]; P9.16 Mirror/Stepper ~EN; pullup */
+		    /* Laser Data */
+		    0x194 0x07 /* GPIO_3[15] ; P9.29, IC_HB_PWM1, pulldown */
+            0x190 0x07 /* GPIO_3[14] ; P9.31, IC_HB_PWM2, pulldown */
+		    
 
-		    /* Sled stepper */
-		    0x048 0x07 /* GPIO_1[18]; P9.14 Dir */
-		    0x040 0x07 /* GPIO_1[16]; P9.15 Step */
+            /* Polygon */
+            0x1ac 0x07 /* GPIO_3[21] ; P9.25, Polygon Enable, pulldown */
+            0x158 0x07 /* GPIO_0[4]  ; P9.18, Polygon Ready, pulldown */
+            0x1a4 0x07 /* GPIO_1[19] ; P9.27, Polygon PWM, pulldown */
+
+		    /* X-Direction */
+		    0x078 0x07 /* GPIO_1[28]; P9.12, X-Dir, pulldown    */
+		    0x19c 0x07 /* GPIO_3[17]; P9.28, X-Step, pulldown   */
+            0x040 0x07 /* GPIO_1[16]; P9.15, X-Enable, pulldown */
+
+            /* Y-Direction */
+            0x178 0x07 /* GPIO_0[12]; P9.20, Y-Dir, pulldown    */
+		    0x198 0x07 /* GPIO_3[16]; P9.30, Y-Step, pulldown   */
+            0x1ac 0x07 /* GPIO_3[21]; P9.25, Y-Enable, pulldown */
 
 		    /* Input */
-		    //0x044 0x37 /* GPIO_1[17]; P9.23 Hsync input. Pullup. */
-		    0x044 0x3F /* GPIO_1[17]; P9.23 Hsync input. Pullup disable */
+		    0x1b4 0x3F /* GPIO_0[20]; P9.41, Hsync AKA photodiode input, Pullup disable */
 
-		    0x078 0x37 /* GPIO_1[28]; P9.12 Stop-switch back; pullup */
-		    0x074 0x37 /* GPIO_0[31]; P9.13 Stop-switch front; pullup */
-		    0x070 0x37 /* GPIO_0[30]; P9.11 UI-button; pullup */
-
-		    /* Experimental direct io */
-		    //0x184 0x36 /* R31[16]; P9.24 input; pullup */
-		    0x184 0x3E /* R31[16]; P9.24 input; pullup disabled. */
-		    0x1a4 0x0D /* R30[5];  P9.27 output */
                 >;
             };
         };
