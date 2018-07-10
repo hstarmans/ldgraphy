@@ -55,6 +55,11 @@ the device tree overlay on your Beaglebone:
 cd ldgraphy/device-tree
 sudo ./start-devicetree-overlay.sh LDGraphy.dts
 ```
+You can check whether it is working via;
+```
+cat /sys/kernel/debug/pinctrl/44e10800.pinmux/pins
+```
+
 
 The input is a PNG image. For converting Gerber files to PNG, see the
 `gerber2png` tool in the [scripts/](./scripts) directory.
