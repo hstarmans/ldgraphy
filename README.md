@@ -58,6 +58,7 @@ sudo ./start-devicetree-overlay.sh LDGraphy.dts
 You can check whether it is working via;
 ```
 cat /sys/kernel/debug/pinctrl/44e10800.pinmux/pins
+cat /sys/devices/platform/bone_capemgr/slots
 ```
 
 
@@ -85,5 +86,8 @@ Mostly for testing or calibration:
         -D<line-width:start,step> : Laser Dot Diameter test chart. Creates a test-strip 10cm x 2cm with 10 samples.
 ```
 
+Current issues;
+i2c is already in use; so you can't modify it you have to disable i2c
+http://www.embedded-things.com/bbb/enable-canbus-on-the-beaglebone-black/
 
 [case-pic]: https://www.hexastorm.com/static/laserscanner.jpg

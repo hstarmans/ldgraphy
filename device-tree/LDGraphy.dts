@@ -30,8 +30,8 @@
             beagleg_gpio_pins: LDGraphy_Pins {
                 pinctrl-single,pins = <
 		    /* Laser Data */
-		    0x194 0x07 /* GPIO_3[15] ; P9.29; PINS 111; IC_HB_PWM1, pulldown */ 
-            0x190 0x07 /* GPIO_3[14] ; P9.31; PINS 110; IC_HB_PWM2, pulldown */ 
+		    0x194 0x07 /* GPIO_3[15] ; P9.29; PINS 101; IC_HB_PWM1, pulldown */ 
+            0x190 0x07 /* GPIO_3[14] ; P9.31; PINS 100; IC_HB_PWM2, pulldown */ 
 		    
 
             /* Polygon */
@@ -45,9 +45,9 @@
             0x040 0x07 /* GPIO_1[16]; P9.15; PINS 16;  X-Enable, pulldown */ 
 
             /* Y-Direction */
-            0x178 0x07 /* GPIO_0[12]; P9.20; PINS 94;  Y-Dir, pulldown    */ 
+            /*0x178 0x07 /* GPIO_0[12]; P9.20; PINS 94;  Y-Dir, pulldown    */ 
 		    0x198 0x07 /* GPIO_3[16]; P9.30; PINS 102; Y-Step, pulldown   */ 
-            0x17c 0x07 /* GPIO_3[21]; P9.19; PINS 95; Y-Enable, pulldown  */ 
+            /*0x17c 0x07 /* GPIO_3[21]; P9.19; PINS 95; Y-Enable, pulldown  */ 
 
 		    /* Input */
 		    0x1b4 0x3F /* GPIO_0[20]; P9.41; PINS 109; Hsync AKA photodiode input, Pullup disable */
