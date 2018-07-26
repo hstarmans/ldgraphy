@@ -90,4 +90,12 @@ Current issues;
 i2c is already in use; so you can't modify it you have to disable i2c
 http://www.embedded-things.com/bbb/enable-canbus-on-the-beaglebone-black/
 
+Pin control;
+echo 110 > /sys/class/gpio/export
+echo high > /sys/class/gpio/gpio110/direction
+cat direction
+list all pins --> ls -al /sys/class/gpio
+cat value
+
+
 [case-pic]: https://www.hexastorm.com/static/laserscanner.jpg
