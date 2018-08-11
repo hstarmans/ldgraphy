@@ -86,16 +86,28 @@ Mostly for testing or calibration:
         -D<line-width:start,step> : Laser Dot Diameter test chart. Creates a test-strip 10cm x 2cm with 10 samples.
 ```
 
-Current issues;
-i2c is already in use; so you can't modify it you have to disable i2c
-http://www.embedded-things.com/bbb/enable-canbus-on-the-beaglebone-black/
 
-Pin control;
+Tests
+--------------
+Laser <br />
+Plug in the 5V and 12V source for the cape, so the laser driver has power.
+Hook the fan to the board, it should spin. Run the following lines of code;
+```
 echo 110 > /sys/class/gpio/export
 echo high > /sys/class/gpio/gpio110/direction
-cat direction
-list all pins --> ls -al /sys/class/gpio
-cat value
+echo low > /sys/class/gpio/gpio110/direction
+cat /sys/class/gpio/gpio110/direction
+cat /sys/class/gpio/gpio110/value
+ls -al /sys/class/gpio
+```
+If the laserdiode does not turn on it could be broken or the laserdiode driver could be broken.
+Hook the fan to the laserdiode output and see if it spins. If it does the laserdiode is broken.
+
+
+Current issues
+--------------
+i2c is already in use; so you can't modify it you have to disable i2c
+http://www.embedded-things.com/bbb/enable-canbus-on-the-beaglebone-black/
 
 
 [case-pic]: https://www.hexastorm.com/static/laserscanner.jpg
