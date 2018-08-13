@@ -102,6 +102,23 @@ ls -al /sys/class/gpio
 ```
 If the laserdiode does not turn on it could be broken or the laserdiode driver could be broken.
 Hook the fan to the laserdiode output and see if it spins. If it does the laserdiode is broken.
+There is also a test script, 
+ldgraphy/scripts/firestarter_tests/laserdriver.py <br/>
+Polygon driver <br/>
+Run the test script ldgraphy/scripts/firestarter_tests/polydriver.py <br/>
+The polygon should spin. <br/>
+Photodiode <br/>
+The python library is broken, so a python test script could not be made.
+Turn on the laser via the command line. 
+```
+echo 110 > /sys/class/gpio/export
+echo high > /sys/class/gpio/gpio110/direction
+```
+Rotate the prism and measure the photodiode input. Pin 20 or pin 116 can be used.
+```
+echo 20 > /sys/class/gpio/export
+echo in > /sys/class/gpio/gpio20/direction
+```
 
 
 Current issues
