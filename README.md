@@ -118,6 +118,7 @@ Rotate the prism and measure the photodiode input. Pin 20 or pin 116 can be used
 ```
 echo 20 > /sys/class/gpio/export
 echo in > /sys/class/gpio/gpio20/direction
+cat /sys/class/gpio/gpio20/value
 ```
 
 
