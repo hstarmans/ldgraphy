@@ -42,7 +42,10 @@ library that helps us with that (probably already installed on your system):
 sudo apt-get update
 sudo apt-get install libpng-dev -y
 ```
-
+The pru package must be cloned manually
+```
+git clone https://github.com/hzeller/am355x_pru_package.git
+```
 Then compile:
 ```
 cd ldgraphy/src
