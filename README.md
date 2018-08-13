@@ -63,7 +63,11 @@ You can check whether it is working via;
 cat /sys/kernel/debug/pinctrl/44e10800.pinmux/pins
 cat /sys/devices/platform/bone_capemgr/slots
 ```
+Enable the PRU
+https://gist.github.com/jonlidgard/1d9e0e92b4f219f3f40edfed260b851e
+https://www.cs.sfu.ca/CourseCentral/433/bfraser/other/2014-student-howtos/pru-guide.pdf
 
+The command you tried is sudo ./ldgraphy -S -D0.15:0.04,0.01
 
 The input is a PNG image. For converting Gerber files to PNG, see the
 `gerber2png` tool in the [scripts/](./scripts) directory.
