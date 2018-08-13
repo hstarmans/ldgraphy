@@ -50,7 +50,7 @@
             /*0x17c 0x07 /* GPIO_3[21]; P9.19; PINS 95; Y-Enable, pulldown  */ 
 
 		    /* Input */
-		    0x1b4 0x3F /* GPIO_0[20]; P9.41; PINS 109; Hsync AKA photodiode input, Pullup disable */
+		    0x1b4 0x3F /* GPIO_0[20]; P9.41; PINS 20 or 116; Hsync AKA photodiode input, Pullup disable */
 
                 >;
             };
