@@ -27,6 +27,28 @@ Work in Progress
 ----------------
 The project is work on progress. The first goal is to modify the original LDgraphy code and reach a phase-lock loop.
 
+Image used
+--------------
+The following image was used http://debian.beagleboard.org/images/bone-debian-9.4-iot-armhf-2018-06-17-4gb.img.xz
+
+Enable the PRU
+--------------
+Check wether the uio_pruss driver is loaded.
+```
+lsmod | grep uio
+```
+There should be something called uio_pruss. If it is not loaded load the module and check again.
+```
+sudo modprobe uio_pruss 
+```
+To enable the uio_pruss module on each boot add it to /etc/modules where by adding the line uio_pruss.
+Now check ls /dev/uio* and see if you have /dev/uio1 /dev/uio2 etc.
+If not modify /boot/uEnv.txt, comment the proc line uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo 
+and uncomment pruss line uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo .
+Reboot and check again.
+
+
+
 Compile
 -------
 This compiles on a BeagleBone Green/Black; it requires the PRU on these
@@ -63,9 +85,6 @@ You can check whether it is working via;
 cat /sys/kernel/debug/pinctrl/44e10800.pinmux/pins
 cat /sys/devices/platform/bone_capemgr/slots
 ```
-Enable the PRU
-https://gist.github.com/jonlidgard/1d9e0e92b4f219f3f40edfed260b851e
-https://www.cs.sfu.ca/CourseCentral/433/bfraser/other/2014-student-howtos/pru-guide.pdf
 
 The command you tried is sudo ./ldgraphy -S -D0.15:0.04,0.01
 
