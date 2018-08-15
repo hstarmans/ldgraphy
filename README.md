@@ -46,6 +46,10 @@ Now check ls /dev/uio* and see if you have /dev/uio1 /dev/uio2 etc.
 If not modify /boot/uEnv.txt, comment the proc line uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo 
 and uncomment pruss line uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo .
 Reboot and check again.
+If it doesnt' work, your old bootloader in the eMMC is blocking u-boot overlays, you can fix it via:
+sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
+You can get an overview your config via sudo /opt/scripts/tools/version.sh .
+
 
 
 
