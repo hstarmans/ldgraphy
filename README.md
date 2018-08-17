@@ -42,14 +42,47 @@ There should be something called uio_pruss. If it is not loaded load the module 
 sudo modprobe uio_pruss 
 ```
 To enable the uio_pruss module on each boot add it to /etc/modules where by adding the line uio_pruss.
-Now check ls /dev/uio* and see if you have /dev/uio1 /dev/uio2 etc.
-If not modify /boot/uEnv.txt, comment the proc line uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo 
-and uncomment pruss line uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo .
+An alternative is to load the PRU via the Python module.
+check 
+```
+ls /dev/uio*
+```
+and see if you have /dev/uio1 /dev/uio2 etc.
+If not modify /boot/uEnv.txt, comment the proc line
+```
+uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo 
+```
+uncomment pruss line
+```
+uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo .
+```
 Reboot and check again.
+You can get an overview your config via
+```
+sudo /opt/scripts/tools/version.sh .
+```
 If it doesnt' work, your old bootloader in the eMMC is blocking u-boot overlays, you can fix it via:
+```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
-You can get an overview your config via sudo /opt/scripts/tools/version.sh .
+```
 
+Device tree overlay
+--------------------
+
+To properly prepare the GPIOs and the PRU to be used, you have to install
+the device tree overlay on your Beaglebone.
+Compile the DTS to a DTBO and move it to /lib/firmware folder.
+Load the DTS via uboot with the custom cape variable, dtboverlay.
+In the laser test we have
+```
+dtb_overlay=/lib/firmware/blinklaser.dtbo
+```
+You can check whether it is working via;
+```
+export PINS=/sys/kernel/debug/pinctrl/44e10800.pinmux/pins
+cat $PINS | grep 'pin 101'
+```
+A good pinout view of the beagle bone is available here https://vadl.github.io/images/bbb/P9Header.png
 
 
 
@@ -78,17 +111,6 @@ cd ldgraphy/src
 make
 ```
 
-To properly prepare the GPIOs and the PRU to be used, you have to install
-the device tree overlay on your Beaglebone:
-```
-cd ldgraphy/device-tree
-sudo ./start-devicetree-overlay.sh LDGraphy.dts
-```
-You can check whether it is working via;
-```
-cat /sys/kernel/debug/pinctrl/44e10800.pinmux/pins
-cat /sys/devices/platform/bone_capemgr/slots
-```
 
 The command you tried is sudo ./ldgraphy -S -D0.15:0.04,0.01
 
