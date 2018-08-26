@@ -68,7 +68,6 @@ sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 
 Device tree overlay
 --------------------
-
 To properly prepare the GPIOs and the PRU to be used, you have to install
 the device tree overlay on your Beaglebone.
 Compile the DTS to a DTBO and move it to /lib/firmware folder.
@@ -178,6 +177,13 @@ Current issues
 --------------
 i2c is already in use; so you can't modify it you have to disable i2c
 http://www.embedded-things.com/bbb/enable-canbus-on-the-beaglebone-black/
+
+Resources
+---------
+P8 header <br/>
+http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP8Header.pdf
+P9 header <br/>
+http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP9Header.pdf
 
 
 [case-pic]: https://www.hexastorm.com/static/laserscanner.jpg

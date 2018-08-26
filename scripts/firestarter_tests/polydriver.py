@@ -8,7 +8,7 @@ poly_enable = "P9_25"
 
 GPIO.setup(poly_pwm, GPIO.OUT)
 GPIO.setup(poly_enable, GPIO.OUT)
-poly_time = 1.0/poly_frequency
+poly_time = 1.0/(poly_frequency*2)
 print("Polygon spins indefinitely at " + str(poly_frequency) + " Hertz.")
 while True:
     GPIO.output(poly_pwm, GPIO.HIGH)

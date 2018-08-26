@@ -1,4 +1,7 @@
-.origin 0
+// failed attempt to blink laser via mode 7, memory map
+// code does not work
+
+origin 0
 .entrypoint START
 
 #define PRU0_ARM_INTERRUPT 19
