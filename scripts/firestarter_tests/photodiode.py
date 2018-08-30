@@ -1,3 +1,6 @@
+// code does not work!! due to library failure
+// laser should be turned on, polygon spinned and then photodiode measured
+
 import Adafruit_BBIO.GPIO as GPIO
 from time import sleep
 

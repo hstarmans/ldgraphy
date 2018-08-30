@@ -19,7 +19,9 @@
 		__overlay__ {
 			pinctrl_test: pinctrl_test_0_pins {
 				pinctrl-single,pins = <
-					0x1a4 0x05	/* P9.27 Polygon PWM */
+					0x1a4 0x05  /* P9.27 Polygon PWM */
+                    0x194 0x05	/* P9.29 Laserdiode  */
+				    0x1a8 0x06  /* P9.41 Photodiode  */
 				>;
 			};
 		};

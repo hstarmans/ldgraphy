@@ -1,5 +1,5 @@
 """ spinpolygon.py - test script for the firestarter board
-It spins the polygon
+It spins the polygon at a rate of 1000 Hz for 5 seconds
 """
 
 import pypruss
