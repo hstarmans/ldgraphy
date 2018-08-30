@@ -20,7 +20,9 @@ Beaglebone Green.
   * quartz optical window, 2 mm thick, 30x30 mm ($55)
   * Photo-diode to determine start-of-line (as the polygon mirrors have
     slightly different long faces and also phase-drift over time) (BPW34-B) ($5)
-  * Hexastorm hat ($50)
+  * Hexastorm hat ($30)
+
+Chips have to be placed on Hexastorm hat manually. The prism has to be glued on top of the polygon motor. This easily takes a day and requires one to be familiar with the procedures.
 
 
 Work in Progress
