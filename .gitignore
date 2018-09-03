@@ -1,5 +1,7 @@
 *~
 .compiler-flags
+*.bin
+*.dtbo
 *.o
 *.o.d
 *-pru_bin.h

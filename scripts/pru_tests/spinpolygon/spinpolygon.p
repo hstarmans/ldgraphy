@@ -5,7 +5,6 @@
 #define INS_PER_US   200
 #define INS_PER_DELAY_LOOP 2
 #define FREQUENCY 1000 // hertz maximum is 2.1 kHz
-// check if 1/1000 works and if you need to account for 2 steps in delay cycle
 #define DELAY  1000 / (FREQUENCY * 2) * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
 #define DURATION 5 // seconds
 #define TICKS DURATION * FREQUENCY
@@ -17,7 +16,7 @@ START:
     
     MOV r1, TICKS
     
-LOOP:
+POLYLOOP:
     SET r30.t5     // polygon output pin high
     MOV r0, DELAY
        
@@ -34,7 +33,7 @@ DELAYOFF:
     QBNE DELAYOFF, r0, 0
 
     SUB r1, r1, 1
-    QBNE LOOP, r1, 0
+    QBNE POLYLOOP, r1, 0
 
     MOV R31.b0, PRU0_ARM_INTERRUPT+16   // Send notification to Host for program completion
 HALT

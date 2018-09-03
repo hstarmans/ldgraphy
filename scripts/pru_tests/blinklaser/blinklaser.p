@@ -5,7 +5,7 @@
 #define INS_PER_US   200
 #define INS_PER_DELAY_LOOP 2
 // set up 3 second delay
-#define DELAY  3000 * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
+#define DELAY   3000 * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
 
 
 START:
