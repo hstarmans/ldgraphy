@@ -4,7 +4,7 @@
 #define PRU0_ARM_INTERRUPT 19
 #define INS_PER_US   200
 #define INS_PER_DELAY_LOOP 2
-#define FREQUENCY 1000 // hertz maximum is 2.1 kHz
+#define FREQUENCY 100 // hertz maximum is 2.1 kHz
 #define DELAY  1000 / (FREQUENCY * 2) * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
 #define DURATION 5 // seconds
 #define TICKS DURATION * FREQUENCY
@@ -17,7 +17,7 @@ START:
     MOV r1, TICKS
     
 POLYLOOP:
-    SET r30.t5     // polygon output pin high
+    SET r30.t7     // polygon output pin high
     MOV r0, DELAY
        
 DELAYON:
@@ -25,7 +25,7 @@ DELAYON:
     QBNE DELAYON, r0, 0
 
 
-    CLR r30.t5     // polygon output pin low  
+    CLR r30.t7     // polygon output pin low  
     MOV r0, DELAY
 
 DELAYOFF:
