@@ -21,7 +21,7 @@
 				pinctrl-single,pins = <
 					0x1ac 0x05  /* P9.25 Polygon PWM */
                     0x194 0x05	/* P9.29 Laserdiode  */
-				    0x1a8 0x06  /* P9.41 Photodiode  */
+				    0x1a8 0x26  /* P9.41 Photodiode  */
 				>;
 			};
 		};

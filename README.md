@@ -177,6 +177,14 @@ cat /sys/class/gpio/gpio20/value
 
 Current issues
 --------------
+
+Polygon
+-------
+Transparent prism worked at 1000 Hertz. In the current setup, speed has been reduced to 100 Hertz.
+The original speed is 2100 Hertz/6. The original polygon also does not work fully in the current setup.
+
+IC2
+---
 i2c is already in use; so you can't modify it you have to disable i2c
 http://www.embedded-things.com/bbb/enable-canbus-on-the-beaglebone-black/
 
