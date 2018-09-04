@@ -14,7 +14,7 @@ PRUSS0_PRU1_IRAM = 3
 PRUSS0_SHARED_DATARAM = 4
 
 import pypruss                              # The Programmable Realtime Unit Library
-import numpy as np                          # Needed for braiding the pins with the delays
+#import numpy as np                          # Needed for braiding the pins with the delays
 import struct
 import mmap
 
