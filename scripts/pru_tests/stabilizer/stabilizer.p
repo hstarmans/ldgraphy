@@ -192,6 +192,9 @@ INIT:
 	;; hsync sensor.
 	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - 2*JITTER_ALLOW
 
+        ;; TODO: remove laser data, mirror clock, sled step
+        ;;       put enable, sled dir on the right buffer
+
 	;; Set GPIO bits to writable. Output bits need to be set to 0.
 	;; GPIO-0
 	MOV r1, (0xffffffff ^ ((1<<GPIO_LASER_DATA)|(1<<GPIO_MIRROR_CLOCK)))
@@ -241,13 +244,13 @@ STATE_IDLE:
 	JMP MAIN_LOOP_NEXT
 
 	;; Spinup. The mirror takes a second or so until it is ready,
-	;; don't switch on the laser quite yet.
+	;; dont switch on the laser quite yet.
 STATE_SPINUP:
 	SUB v.wait_countdown, v.wait_countdown, 1
 	QBEQ spinup_done, v.wait_countdown, 0
 	JMP MAIN_LOOP_NEXT
 spinup_done:
-	SET v.gpio_out0, GPIO_LASER_DATA	; Now: laser on
+	SET r30.t1	; Now: laser on
 	MOV v.wait_countdown, MAX_WAIT_STABLE_TIME
 	MOV v.state, STATE_WAIT_STABLE
 	JMP MAIN_LOOP_NEXT
@@ -267,7 +270,7 @@ wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
 	MOV v.last_hsync_time, v.hsync_time
 	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
-	CLR v.gpio_out0, GPIO_LASER_DATA   ; laser off for now
+	CLR r30.t1     ; laser off for now
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
 	MOV v.state, STATE_CONFIRM_STABLE
 	JMP MAIN_LOOP_NEXT
@@ -276,16 +279,16 @@ wait_stable_not_synced_yet:
 	JMP MAIN_LOOP_NEXT
 
 	;; We got synchronization and know when it is time to switch on
-	;; the laser to get the next synchronization. Let's see if we can repeat
+	;; the laser to get the next synchronization. Lets see if we can repeat
 	;; this.
 STATE_CONFIRM_STABLE:
 	QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
-	SET v.gpio_out0, GPIO_LASER_DATA
+	SET r30.t1    ; laser on
 confirm_stable_test_for_hsync:
 	branch_if_hsync confirm_stable_hsync_seen
 	JMP MAIN_LOOP_NEXT
 confirm_stable_hsync_seen:
-	CLR v.gpio_out0, GPIO_LASER_DATA ; hsync finished.
+	CLR r30.t1 ; hsync finished.
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
 	/* todo: test if in between expected range, otherwise state wait stable */
 	MOV v.state, STATE_DATA_RUN
@@ -295,12 +298,12 @@ confirm_stable_hsync_seen:
 STATE_DATA_WAIT_FOR_SYNC:
 	QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time ; not yet
 	;; Now we are close enough to the hsync-block, switch on the laser.
-	SET v.gpio_out0, GPIO_LASER_DATA
+	SET r30.t1     ; laser on
 wait_for_sync:
 	branch_if_hsync wait_for_sync_hsync_seen
 	JMP MAIN_LOOP_NEXT
 wait_for_sync_hsync_seen:
-	CLR v.gpio_out0, GPIO_LASER_DATA ; hsync finished.
+	CLR r30.t1 ; hsync finished, laser off
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
 
 	;; we step at the end of a data line, so here we should reset.
@@ -324,10 +327,10 @@ data_run_data_output:
 	LBCO r1.b0, CONST_PRUDRAM, r2, 1
 
 	QBBS data_laser_set_on, r1.b0, v.bit_loop
-	CLR v.gpio_out0, GPIO_LASER_DATA
+	CLR r30.t1 ; laser off
 	JMP data_laser_set_done
 data_laser_set_on:
-	SET v.gpio_out0, GPIO_LASER_DATA
+	SET r30.t1 ; laser on
 data_laser_set_done:
 
 	QBEQ data_run_next_byte, v.bit_loop, 0
@@ -340,14 +343,14 @@ data_run_next_byte:
 
 	;;  not really necessary to be its own state.
 STATE_ADVANCE_RINGBUFFER:
-	CLR v.gpio_out0, GPIO_LASER_DATA ; not needed now.
+	CLR r30.t1 ; laser off, not needed now.
 
 	;; check if we need to advance stepper
 	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
 	QBEQ advance_sled_done, r1.b0, CMD_SCAN_DATA_NO_SLED
 	SET v.gpio_out1, GPIO_SLED_STEP
 advance_sled_done:
-	;; signal host that we're done with this item.
+	;; signal host that we are done with this item.
 	MOV r1.b0, CMD_EMPTY
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
 	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; tell that status changed.
@@ -363,7 +366,7 @@ rb_advanced:
 STATE_AWAIT_MORE_DATA:
 	SUB v.wait_countdown, v.wait_countdown, 1
 	QBNE active_data_wait, v.wait_countdown, 0
-	;; ok, we waited too long, let's switch off motors and go back
+	;; ok, we waited too long, let us switch off motors and go back
 	;; to idle.
 	SET v.gpio_out1, GPIO_MOTORS_ENABLE ; negative logic
 	MOV v.state, STATE_IDLE
@@ -412,10 +415,10 @@ FINISH:
 	SET r1, r1, GPIO_MOTORS_ENABLE ; Well, and the motor ~enable
 	SBBO r1, v.gpio_1_write, 0, 4
 
-	;; Tell host that we've seen the CMD_EXIT and acknowledge with CMD_DONE
+	;; Tell host that we have seen the CMD_EXIT and acknowledge with CMD_DONE
 	MOV r1.b0, CMD_DONE
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
-	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; Tell that we're done.
+	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; Tell that we are done.
 
 	HALT
 

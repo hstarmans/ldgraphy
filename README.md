@@ -174,6 +174,13 @@ echo in > /sys/class/gpio/gpio20/direction
 cat /sys/class/gpio/gpio20/value
 ```
 
+Planning
+--------
+Replace polygon pulse, laser pin and photodiode pin in stabilizer
+Run assembly code, force in error state and detect errror
+Run assembly code with writing to memory and force error
+
+
 
 Current issues
 --------------
