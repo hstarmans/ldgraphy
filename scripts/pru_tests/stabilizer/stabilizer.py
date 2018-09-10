@@ -14,10 +14,10 @@ PRUSS0_PRU0_IRAM = 2
 PRUSS0_PRU1_IRAM = 3
 PRUSS0_SHARED_DATARAM = 4
 
-import pypruss                              # The Programmable Realtime Unit Library
-import numpy as np                          # Needed for braiding the pins with the delays
+import pypruss                              
 import struct
 import mmap
+import numpy as np
 
 PRU_ICSS = 0x4A300000
 PRU_ICSS_LEN = 512 * 1024
@@ -31,6 +31,7 @@ with open("/dev/mem", "r+b") as f:
     ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
     ddr_mem[RAM0_START:RAM0_START + 4] = struct.pack('L', 0)
 
+#TODO: replace with real test data
 # data prep for memory write
 steps = [(7 << 22), 0] * 10                 # 10 blinks, this control the GPIO1 pins
 delays = [0xFFFFFF] * 20                    # number of delays. Each delay adds 2 instructions, so ~10ns
@@ -45,16 +46,23 @@ pypruss.init()
 pypruss.open(0)                                     
 pypruss.pruintc_init()
 pypruss.pru_write_memory(0, 0, data)        # Load the data in the PRU ram
-pypruss.exec_program(0, "./photodiodetest.bin")    
+pypruss.exec_program(0, "./stabilizer.bin")    
 pypruss.wait_for_event(0)                           
-pypruss.clear_event(0,pypruss.PRU0_ARM_INTERRUPT)
+pypruss.clear_event(0, pypruss.PRU0_ARM_INTERRUPT)
 pypruss.pru_disable(0)                              
 pypruss.exit()                            
 
 # read out result and state of the program
 with open("/dev/mem", "r+b") as f:
+    byte = 1
     ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
-    local = struct.unpack('L', ddr_mem[RAM0_START:RAM0_START + 4])
-#TODO: add check if test is succesfull or not
-    print(hex(local[0]))
+    local = struct.unpack('L', ddr_mem[RAM0_START+byte//4:RAM0_START + byte//4 + 4])
+    # START_RINGBUFFER 1 --> ja hij zit in de 1//4 (eerste vier bytes)
+    # bit shift to get the first byte
+    byte = 1
+    # bit mask to ignore higher bytes
+    command_index = (local[0]>>8*byte)&255
+    commands = ['CMD_EMPTY', 'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
+    commands += ['CMD_EXIT', 'CMD_DONE']
+    print(commands[command_index])
 
