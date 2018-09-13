@@ -197,7 +197,9 @@ INIT:
 
 	;; Set GPIO bits to writable. Output bits need to be set to 0.
 	;; GPIO-0
-	MOV r1, (0xffffffff ^ ((1<<GPIO_LASER_DATA)|(1<<GPIO_MIRROR_CLOCK)))
+	
+        
+        MOV r1, (0xffffffff ^ ((1<<GPIO_LASER_DATA)|(1<<GPIO_MIRROR_CLOCK)))
 	MOV r2, GPIO_0_BASE | GPIO_OE
 	SBBO r1, r2, 0, 4
 
@@ -219,19 +221,18 @@ INIT:
 	start_cpu_cycle_counter
 
 MAIN_LOOP:
-	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
+        LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
 	QBEQ FINISH, r1.b0, CMD_EXIT		   ; react to exit immediately
+        JMP v.state		; switch/case with direct jump :)
 
-	JMP v.state		; switch/case with direct jump :)
 
 	;; Each of these states must not use more than TICK_DELAY steps
 
 	;; Waiting for Data to arrive
 STATE_IDLE:
-	;; Command is in r1.b0
 	QBEQ FINISH, r1.b0, CMD_EXIT
 	QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
-	MOV v.global_time, 0	; have monotone increasing time for 1h or so
+        MOV v.global_time, 0	; have monotone increasing time for 1h or so
 	MOV v.wait_countdown, SPINUP_TICKS
 	MOV v.polygon_time, 0
 	MOV v.state, STATE_SPINUP

@@ -19,12 +19,18 @@ import struct
 import mmap
 import numpy as np
 
+# BEAGLE BONE CONSTANTS
 PRU_ICSS = 0x4A300000
 PRU_ICSS_LEN = 512 * 1024
 
 RAM0_START = 0x00000000
 RAM1_START = 0x00002000
 RAM2_START = 0x00012000
+
+# CONSTANTS LASERSCANNER
+COMMANDS = ['CMD_EMPTY', 'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
+COMMANDS += ['CMD_EXIT', 'CMD_DONE']
+ERRORS = ['ERROR_NONE', 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC', 'ERROR_TIME_OVERRUN']
 
 # needed for memory read
 with open("/dev/mem", "r+b") as f:
@@ -33,19 +39,19 @@ with open("/dev/mem", "r+b") as f:
 
 #TODO: replace with real test data
 # data prep for memory write
-steps = [(7 << 22), 0] * 10                 # 10 blinks, this control the GPIO1 pins
-delays = [0xFFFFFF] * 20                    # number of delays. Each delay adds 2 instructions, so ~10ns
+#  START with error out of bounds
+#  SCAN_DATA COMMAND
+#  FINISH with EXIT command
+data = [4] + [1] * 10 + [3]                
+bit_data = (len(data)//4+1)*[0]
+for idx, item in enumerate(data):
+    bit_data[idx//4]+=item<<(8*(idx%4))
 
-data = np.array([steps, delays])            # Make a 2D matrix combining the ticks and delays
-data = data.transpose().flatten()           # Braid the data so every other item is a
-data = [20] + list(data)                    # Make the data into a list and add the number of ticks total
-
-    
 #pypruss.modprobe()                # This only has to be called once pr boot
 pypruss.init()                                      
 pypruss.open(0)                                     
 pypruss.pruintc_init()
-pypruss.pru_write_memory(0, 0, data)        # Load the data in the PRU ram
+pypruss.pru_write_memory(0, 0, bit_data)        # Load the data in the PRU ram
 pypruss.exec_program(0, "./stabilizer.bin")    
 pypruss.wait_for_event(0)                           
 pypruss.clear_event(0, pypruss.PRU0_ARM_INTERRUPT)
@@ -54,15 +60,32 @@ pypruss.exit()
 
 # read out result and state of the program
 with open("/dev/mem", "r+b") as f:
+    # byte number should be set via amount interrupts received
     byte = 1
     ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
     local = struct.unpack('L', ddr_mem[RAM0_START+byte//4:RAM0_START + byte//4 + 4])
     # START_RINGBUFFER 1 --> ja hij zit in de 1//4 (eerste vier bytes)
     # bit shift to get the first byte
-    byte = 1
     # bit mask to ignore higher bytes
     command_index = (local[0]>>8*byte)&255
-    commands = ['CMD_EMPTY', 'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
-    commands += ['CMD_EXIT', 'CMD_DONE']
-    print(commands[command_index])
+    try:
+        print("COMMAND RECEIVED")
+        print(COMMANDS[command_index])
+    except IndexError:
+        print("ERROR, command out of index received")
+        print(command_index)
+    error_index = local[0]&255
+    if error_index:
+        try:
+            print("ERROR RECEIVED")
+            print(ERRORS[error_index])
+        except IndexError:
+            print("Error, out of index")
+    else:
+        print("No error received")
+
+
+
+
+    # vul drie in 
 
