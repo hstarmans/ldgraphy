@@ -159,7 +159,10 @@ There is also a test script,
 ldgraphy/scripts/firestarter_tests/laserdriver.py <br/>
 Polygon driver <br/>
 Run the test script ldgraphy/scripts/firestarter_tests/polydriver.py <br/>
-The polygon should spin. <br/>
+The polygon should spin. Two types of polygon were considered.
+The MASQ6DF15RS which are sold with a maximum speed of 24000 RPM although a label indicates they spin at 20787 RPM. A Chinese sticker has been placed to cover this number. The chip used is Panasonic AN44000A. The MASQ0DF9RV rotate at 21000 RPM. The chip used is NBC3111.
+It was found at that both the input and output of these chips are different and the Panasonic chip rotates the polygon faster than what would be expected of a given pulse rate. We therefore chose to proceed with the NBC3111. The pulse pin of the Panasonic is AN44000A.
+
 Photodiode <br/>
 The python library is broken, so a python test script could not be made.
 Turn on the laser via the command line. 

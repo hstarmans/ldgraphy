@@ -50,6 +50,9 @@
 // Each mirror segment is this number of pixel ticks long (only the first
 // 8*SCANLINE_DATA_SIZE are filled with pixels, the rest is dead part of the
 // segment).
+//            11000 --> 242 Hz polygon speed (Zeller)
+//            22000 --> 121 Hz
 #define TICKS_PER_MIRROR_SEGMENT 11000
+#define FACETS 4
 
 #endif // LASER_SCRIBE_CONSTANTS_H

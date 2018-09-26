@@ -42,7 +42,7 @@ with open("/dev/mem", "r+b") as f:
 #  START with error out of bounds
 #  SCAN_DATA COMMAND
 #  FINISH with EXIT command
-data = [4] + [1] * 10 + [3]                
+data = [0] + [1] * 1000*100 + [3]                
 bit_data = (len(data)//4+1)*[0]
 for idx, item in enumerate(data):
     bit_data[idx//4]+=item<<(8*(idx%4))

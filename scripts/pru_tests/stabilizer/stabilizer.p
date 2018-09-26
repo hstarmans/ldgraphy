@@ -50,7 +50,7 @@
 #define GPIO_SLED_DIR 18      // GPIO_1, PIN_P9_14
 #define GPIO_SLED_STEP 16     // GPIO_1, PIN_P9_15
 
-#define JITTER_ALLOW (TICKS_PER_MIRROR_SEGMENT/100)
+#define JITTER_ALLOW ((TICKS_PER_MIRROR_SEGMENT*6)/FACETS)/100
 
 // Cycles to spin up mirror.
 #define SPINUP_TICKS         4000000 ; Spinup, laser off
@@ -106,31 +106,17 @@
 	QBGT to_label, r6, value
 .endm
 
-// HSync reading via LBBO. Seems to be pretty slow.
-.macro branch_if_hsync_gpio
-.mparam to_label
-	LBBO r5, v.gpio_1_read, 0, 4
-	QBBC bit_is_clear, r5, GPIO_HSYNC_IN
-	QBEQ no_hsync, v.last_hsync_bit, 1 ; we are only interested in 0->1 edge
-	MOV v.last_hsync_bit, 1
-	MOV v.hsync_time, v.global_time
-	JMP to_label
-bit_is_clear:
-	MOV v.last_hsync_bit, 0
-no_hsync:
-.endm
 
-// Sets hsync_time and jumps to label if hsync seen. HSync is defined as
 // the laser just finishing the fluorescencing hsync block. Electrically
 // the rising edge after we have been low for a bit (while laser is over block).
 // Reading from r31
 .macro branch_if_hsync
 .mparam to_label
-	QBBC bit_is_clear, r31, 16	   ; direct PRU input
+        QBBC bit_is_clear, r31, 6 	   ; direct PRU input
 	QBEQ no_hsync, v.last_hsync_bit, 1 ; we are only interested in 0->1 edge
 	MOV v.last_hsync_bit, 1
-	MOV v.hsync_time, v.global_time
-	JMP to_label
+	MOV v.hsync_time, v.global_time 
+        JMP to_label
 bit_is_clear:
 	MOV v.last_hsync_bit, 0
 no_hsync:
@@ -190,7 +176,7 @@ INIT:
 
 	;; switch the laser full on at this period so that we reliably hit the
 	;; hsync sensor.
-	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - 2*JITTER_ALLOW
+	MOV v.start_sync_after, (TICKS_PER_MIRROR_SEGMENT*6)/FACETS - 2*JITTER_ALLOW
 
         ;; TODO: remove laser data, mirror clock, sled step
         ;;       put enable, sled dir on the right buffer
@@ -234,6 +220,7 @@ STATE_IDLE:
 	QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
         MOV v.global_time, 0	; have monotone increasing time for 1h or so
 	MOV v.wait_countdown, SPINUP_TICKS
+        MOV v.last_hsync_time, 0
 	MOV v.polygon_time, 0
 	MOV v.state, STATE_SPINUP
 	CLR v.gpio_out1, GPIO_MOTORS_ENABLE ; negative logic
@@ -270,7 +257,7 @@ STATE_WAIT_STABLE:
 wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
 	MOV v.last_hsync_time, v.hsync_time
-	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
+	branch_if_not_between wait_stable_not_synced_yet, r1, (TICKS_PER_MIRROR_SEGMENT*6)/FACETS-JITTER_ALLOW, (TICKS_PER_MIRROR_SEGMENT*6)/FACETS+JITTER_ALLOW
 	CLR r30.t1     ; laser off for now
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
 	MOV v.state, STATE_CONFIRM_STABLE
@@ -388,7 +375,7 @@ MAIN_LOOP_NEXT:
 	;; The current state set whatever state it needed, now wait for the
 	;; end of our period to execute the actions: set GPIO bits.
 	wait_to_next_tick_and_reset TICK_DELAY
-	XOR r30, r30, (1<<5)	; debug output
+	;; XOR r30, r30, (1<<5)	; debug output
 
 	;; Global time update. The global time wraps around after 1h or so
 	;; but it is sufficient for the typical exposure times of a few minutes.
@@ -398,8 +385,7 @@ MAIN_LOOP_NEXT:
 	ADD v.polygon_time, v.polygon_time, 1
 	MOV r1, TICKS_PER_MIRROR_SEGMENT/2
 	QBLT mirror_toggle_done, r1, v.polygon_time
-	MOV r1, (1<<GPIO_MIRROR_CLOCK)
-	XOR v.gpio_out0, v.gpio_out0, r1
+	XOR r30, r30, (1<<5)
 	MOV v.polygon_time, 0
 mirror_toggle_done:
 
@@ -410,7 +396,8 @@ mirror_toggle_done:
 	JMP MAIN_LOOP
 
 FINISH:
-	MOV r1, 0		; Switch off all GPIO bits.
+	CLR r30.t1 ; laser off
+        MOV r1, 0		; Switch off all GPIO bits.
 	SBBO r1, v.gpio_0_write, 0, 4
 
 	SET r1, r1, GPIO_MOTORS_ENABLE ; Well, and the motor ~enable
