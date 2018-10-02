@@ -52,7 +52,10 @@
 // segment).
 //            11000 --> 242 Hz polygon speed (Zeller)
 //            22000 --> 121 Hz
-#define TICKS_PER_MIRROR_SEGMENT 11000
+
+#define RPM 2400
+#define FREQUENCY RPM/10
+#define TICKS_PER_MIRROR_SEGMENT 200*1000*1000/(TICK_DELAY*FREQUENCY)
 #define FACETS 4
 
 #endif // LASER_SCRIBE_CONSTANTS_H

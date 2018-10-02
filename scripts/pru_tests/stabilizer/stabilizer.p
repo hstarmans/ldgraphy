@@ -50,7 +50,7 @@
 #define GPIO_SLED_DIR 18      // GPIO_1, PIN_P9_14
 #define GPIO_SLED_STEP 16     // GPIO_1, PIN_P9_15
 
-#define JITTER_ALLOW ((TICKS_PER_MIRROR_SEGMENT*6)/FACETS)/100
+#define JITTER_ALLOW ((TICKS_PER_MIRROR_SEGMENT*6)/FACETS)/10
 
 // Cycles to spin up mirror.
 #define SPINUP_TICKS         4000000 ; Spinup, laser off
@@ -407,7 +407,6 @@ FINISH:
 	MOV r1.b0, CMD_DONE
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
 	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; Tell that we are done.
-
 	HALT
 
 REPORT_ERROR_MIRROR:

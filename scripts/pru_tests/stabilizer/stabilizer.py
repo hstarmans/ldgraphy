@@ -37,12 +37,21 @@ with open("/dev/mem", "r+b") as f:
     ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
     ddr_mem[RAM0_START:RAM0_START + 4] = struct.pack('L', 0)
 
-#TODO: replace with real test data
-# data prep for memory write
-#  START with error out of bounds
-#  SCAN_DATA COMMAND
-#  FINISH with EXIT command
-data = [0] + [1] * 1000*100 + [3]                
+
+# line
+scanline_data_size = 512
+queue_len = 8
+line = [1]*scanline_data_size
+RPM = 2400
+facets = 4
+duration = 30  # seconds
+
+total_lines = 10000*60/duration*facets
+
+# START
+start_lines = queue_len if total_lines > queue_len else total_lines
+# byte zero is error byte
+data = [0]+([1] + line)* start_lines + [3]               
 bit_data = (len(data)//4+1)*[0]
 for idx, item in enumerate(data):
     bit_data[idx//4]+=item<<(8*(idx%4))
@@ -53,39 +62,62 @@ pypruss.open(0)
 pypruss.pruintc_init()
 pypruss.pru_write_memory(0, 0, bit_data)        # Load the data in the PRU ram
 pypruss.exec_program(0, "./stabilizer.bin")    
-pypruss.wait_for_event(0)                           
-pypruss.clear_event(0, pypruss.PRU0_ARM_INTERRUPT)
-pypruss.pru_disable(0)                              
-pypruss.exit()                            
 
-# read out result and state of the program
-with open("/dev/mem", "r+b") as f:
-    # byte number should be set via amount interrupts received
-    byte = 1
-    ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
-    local = struct.unpack('L', ddr_mem[RAM0_START+byte//4:RAM0_START + byte//4 + 4])
+
+if total_lines > queue_len:
+    total_lines -= queue_len
+
+
+# continue_line
+data = ([1] + line)                
+bit_data = (len(data)//4+1)*[0]
+for idx, item in enumerate(data):
+    bit_data[idx//4]+=item<<(8*(idx%4))
+
+
+byte = 1 # note byte0 is error
+response = 1
+while True:
+    pypruss.wait_for_event(0)                           
+    
+    pypruss.clear_event(0, pypruss.PRU0_ARM_INTERRUPT)
+    
+    # read out result and state of the program
+    with open("/dev/mem", "r+b") as f:
+        # byte number should be set via amount interrupts received
+        ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
+        local = struct.unpack('L', ddr_mem[RAM0_START+byte//4:RAM0_START + byte//4 + 4])
     # START_RINGBUFFER 1 --> ja hij zit in de 1//4 (eerste vier bytes)
     # bit shift to get the first byte
     # bit mask to ignore higher bytes
     command_index = (local[0]>>8*byte)&255
     try:
-        print("COMMAND RECEIVED")
-        print(COMMANDS[command_index])
+        command = COMMANDS[command_index]
+        if command == 'CMD_EMPTY':
+            print("CMD_EMPTY RECEIVED")
+            #pypruss.pru_write_memory(0, byte, bit_data)
+        else:
+            print("COMMAND RECEIVED")
+            print(COMMANDS[command_index])
+            break
     except IndexError:
         print("ERROR, command out of index received")
         print(command_index)
-    error_index = local[0]&255
-    if error_index:
-        try:
-            print("ERROR RECEIVED")
-            print(ERRORS[error_index])
-        except IndexError:
-            print("Error, out of index")
-    else:
-        print("No error received")
+        break
+    byte += queue_len
+    if byte > 8*queue_len+1:
+        byte = 1
+    if response > total_lines:
+        break
+    response += 1
+    print(response)
+        
+error_index = local[0]&255
+try:
+    print("ERROR RECEIVED")
+    print(ERRORS[error_index])
+except IndexError:
+    print("Error, out of index")
 
-
-
-
-    # vul drie in 
-
+pypruss.pru_disable(0)                              
+pypruss.exit()                            
