@@ -41,17 +41,20 @@ with open("/dev/mem", "r+b") as f:
 # line
 scanline_data_size = 512
 queue_len = 8
-line = [1]*scanline_data_size
+line = [2]*scanline_data_size
 RPM = 2400
 facets = 4
-duration = 30  # seconds
+duration = 10  # seconds
 
-total_lines = 10000*60/duration*facets
+total_lines = RPM*duration/60*facets
 
+
+# TODO: engine locks if you send a zero as command
+#       so if data arrives too late no real error
 # START
 start_lines = queue_len if total_lines > queue_len else total_lines
 # byte zero is error byte
-data = [0]+([1] + line)* start_lines + [3]               
+data = [0]+([1] + line)* start_lines + [10]               
 bit_data = (len(data)//4+1)*[0]
 for idx, item in enumerate(data):
     bit_data[idx//4]+=item<<(8*(idx%4))
@@ -69,33 +72,34 @@ if total_lines > queue_len:
 
 
 # continue_line
-data = ([1] + line)                
-bit_data = (len(data)//4+1)*[0]
-for idx, item in enumerate(data):
-    bit_data[idx//4]+=item<<(8*(idx%4))
+#data = ([1] + line)                
+#bit_data = (len(data)//4+1)*[0]
+#for idx, item in enumerate(data):
+#    bit_data[idx//4]+=item<<(8*(idx%4))
 
 
 byte = 1 # note byte0 is error
 response = 1
 while True:
     pypruss.wait_for_event(0)                           
-    
     pypruss.clear_event(0, pypruss.PRU0_ARM_INTERRUPT)
-    
     # read out result and state of the program
     with open("/dev/mem", "r+b") as f:
         # byte number should be set via amount interrupts received
         ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
-        local = struct.unpack('L', ddr_mem[RAM0_START+byte//4:RAM0_START + byte//4 + 4])
+        # substracted 1 to read out error
+        local = struct.unpack('L',
+                              ddr_mem[RAM0_START+byte-1:RAM0_START
+                                +byte - 1 + 4])
     # START_RINGBUFFER 1 --> ja hij zit in de 1//4 (eerste vier bytes)
     # bit shift to get the first byte
     # bit mask to ignore higher bytes
-    command_index = (local[0]>>8*byte)&255
+    command_index = (local[0]>>8*1)&255
     try:
         command = COMMANDS[command_index]
         if command == 'CMD_EMPTY':
-            print("CMD_EMPTY RECEIVED")
-            #pypruss.pru_write_memory(0, byte, bit_data)
+            if response%queue_len == 0:
+                pypruss.pru_write_memory(0, 0, bit_data)
         else:
             print("COMMAND RECEIVED")
             print(COMMANDS[command_index])
@@ -104,13 +108,14 @@ while True:
         print("ERROR, command out of index received")
         print(command_index)
         break
-    byte += queue_len
-    if byte > 8*queue_len+1:
+    byte += scanline_data_size+1
+    if byte > scanline_data_size*queue_len:
         byte = 1
     if response > total_lines:
         break
     response += 1
-    print(response)
+
+print("Sent " + str(response) + " lines.")
         
 error_index = local[0]&255
 try:
