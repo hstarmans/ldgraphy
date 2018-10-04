@@ -51,6 +51,9 @@ total_lines = RPM*duration/60*facets
 
 # TODO: engine locks if you send a zero as command
 #       so if data arrives too late no real error
+# TODO: improve understanting of data_wait state, why does he send out zero
+# TODO: machine halts at zero
+# TODO: why is there a ringbuffer!?
 # START
 start_lines = queue_len if total_lines > queue_len else total_lines
 # byte zero is error byte
