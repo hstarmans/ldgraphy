@@ -3,7 +3,8 @@ Hexastorm - Laser Direct Lithography
 
 http://www.hexastorm.com/
 
-A process known as Laser Direct Imaging.
+A process known as Laser Direct Imaging. <br>
+Note, the image below is severily dated <br>
 
 <img src="https://www.hexastorm.com/static/laserscanner.jpg" align="center" height="300"/>
 
@@ -22,7 +23,7 @@ The BOM is in the order of $200 including the Beaglebone Green.
   * Hexastorm hat ($30)
 
 The Hexastorm hat is not for sale and has to be produced manually. 
-The prism has to be glued on top of the polygon motor. T
+The prism has to be glued on top of the polygon motor. 
 
 Work in Progress
 ----------------
