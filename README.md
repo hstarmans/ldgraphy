@@ -67,6 +67,16 @@ If it doesnt' work, your old bootloader in the eMMC is blocking u-boot overlays,
 ```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
+Install pasm
+------------
+First, install the PRU assembler and prussdrv library:
+```
+cd ~
+git clone git@github.com:beagleboard/am335x_pru_package.git
+cd am335x_pru_package
+make
+make install
+```
 
 Device tree overlay
 --------------------
