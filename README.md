@@ -4,7 +4,6 @@ Hexastorm - Laser Direct Lithography
 http://www.hexastorm.com/
 
 A process known as Laser Direct Imaging. <br>
-Note, the image below is severely dated <br>
 
 <img src="https://www.hexastorm.com/static/box.jpg" align="center" height="300"/>
 
