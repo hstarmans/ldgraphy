@@ -11,6 +11,7 @@ and without a lens.
 from pyuio.ti.icss import Icss
 from pyuio.uio import Uio
 from bidict import bidict
+from ctypes import c_uint32
 
 IRQ = 2      # range 2 .. 9
 EVENT0 = 19  # range 16 .. 31
@@ -26,6 +27,7 @@ SCANLINE_DATA_SIZE = 512
 QUEUE_LEN = 8
 RPM = 2400
 FACETS = 4
+START_RINGBUFFER = 5
 
 # line
 LINE = [2]*SCANLINE_DATA_SIZE
@@ -35,7 +37,7 @@ TOTAL_LINES = RPM*DURATION/60*FACETS
 
 # DATA to send before PRU start
 START_LINES = QUEUE_LEN if TOTAL_LINES > QUEUE_LEN else TOTAL_LINES
-data = [ERRORS.inv['ERROR_NONE']]
+data = [ERRORS.inv['ERROR_NONE']] + [0]*4
 data +=([COMMANDS.inv['CMD_SCAN_DATA']] + LINE)* START_LINES                
 
 
@@ -61,7 +63,7 @@ if TOTAL_LINES > QUEUE_LEN:
     TOTAL_LINES -= QUEUE_LEN
 
 
-byte = 1 # byte0 is error, increased scanline size each loop
+byte = START_RINGBUFFER # increased scanline size each loop
 response = 1
 while True:
     data = [1] + LINE
@@ -88,10 +90,14 @@ while True:
     response += 1
 
 print("Sent {} lines.".format(response))
+
 error_index = pruss.core0.dram.map(length = 1, offset = 0)[0]
 try:
     print("ERROR RECEIVED")
     print(ERRORS[error_index])
 except IndexError:
     print("ERROR, error out of index")
+
+sync_fails = pruss.core0.dram.map(c_uint32, offset = 1).value
+print("There have been {} sync fails".format(sync_fails))
 

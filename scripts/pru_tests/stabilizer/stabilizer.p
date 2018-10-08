@@ -29,7 +29,7 @@
 #define CONST_PRUDRAM	   C24
 
 #define ERROR_RESULT_POS 0
-#define START_RINGBUFFER 1
+#define START_RINGBUFFER 5
 
 #define PRUSS_PRU_CTL      0x22000
 #define CYCLE_COUNTER_OFFSET  0x0C
@@ -73,7 +73,7 @@
 	.u32 start_sync_after	; time after which we should start sync.
 
 	;; Variables used.
-	.u32 gpio_out0	   ; Stuff we write out GPIO. Bits for polygon + laser
+	.u32 gpio_out0	   ; Stuff we write out GPIO 
 	.u32 gpio_out1	   ; Stuff we write out to GPIO. Bits step/dir/enable
 
 	.u32 global_time	; our cycle time.
@@ -85,14 +85,15 @@
 	.u32 sync_laser_on_time
 
 
-	.u32 item_start	   ; Start position of current item in ringbuffer
+	.u32 item_start	        ; Start position of current item in ringbuffer
 	.u32 item_pos		; position within item.
+        .u32 sync_fails         ; number of lines failed to sync
 
 	.u16 state		; Current state machine state.
 	.u8  bit_loop		; bit loop
 	.u8  last_hsync_bit	; so that we can trigger on an edge
 .ends
-.assign Variables, r10, r27, v
+.assign Variables, r10, r28, v
 
 ;; Registers
 ;; r1 ... r9 : common use
@@ -141,8 +142,8 @@ no_hsync:
 .macro wait_to_next_tick_and_reset
 .mparam value
 	MOV r7, PRUSS_PRU_CTL
-	// Reading this register takes 4 cpu cycles. So we read it and
-	// then do the remaining time with a busy loop.
+	; Reading this register takes 4 cpu cycles. So we read it and
+	; then do the remaining time with a busy loop.
 	LBBO r9, r7, CYCLE_COUNTER_OFFSET, 4 ; get current counter
 	MOV r8, (value - 10)		     ; account for some overhead
 	QBGT REPORT_ERROR_TIME_OVERRUN, r8, r9 ; Error. Optimize state machine!
@@ -201,8 +202,9 @@ INIT:
 	CLR v.gpio_out1, GPIO_SLED_DIR ; direction needs changing later.
 	CLR v.gpio_out1, GPIO_SLED_STEP
 
-	MOV v.item_start, START_RINGBUFFER    ; Byte position in DRAM
+	MOV v.item_start, START_RINGBUFFER    ; command byte position in DRAM
 	MOV v.state, STATE_IDLE
+        MOV v.sync_fails, 0
 
 	start_cpu_cycle_counter
 
@@ -356,6 +358,10 @@ STATE_AWAIT_MORE_DATA:
 	QBNE active_data_wait, v.wait_countdown, 0
 	;; ok, we waited too long, let us switch off motors and go back
 	;; to idle.
+        MOV r1, 1000000
+        QBLT ringbufferreset, r1, v.sync_fails ; random to prevent overflow
+        ADD v.sync_fails, v.sync_fails, 1
+ringbufferreset:
 	SET v.gpio_out1, GPIO_MOTORS_ENABLE ; negative logic
 	MOV v.state, STATE_IDLE
 	JMP MAIN_LOOP_NEXT
