@@ -13,8 +13,8 @@ from pyuio.uio import Uio
 from bidict import bidict
 from ctypes import c_uint32
 
-IRQ = 2      # range 2 .. 9
-EVENT0 = 19  # range 16 .. 31
+IRQ = 2                  # range 2 .. 9
+PRU0_ARM_INTERRUPT = 19  # range 16 .. 31
 
 # CONSTANTS LASERSCANNER
 COMMANDS = ['CMD_EMPTY', 'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
@@ -34,11 +34,12 @@ LINE = [2]*SCANLINE_DATA_SIZE
 DURATION = 10  # seconds
 TOTAL_LINES = RPM*DURATION/60*FACETS
 
+if TOTAL_LINES < QUEUE_LEN:
+    raise Exception("Too few lines!")
 
 # DATA to send before PRU start
-START_LINES = QUEUE_LEN if TOTAL_LINES > QUEUE_LEN else TOTAL_LINES
 data = [ERRORS.inv['ERROR_NONE']] + [0]*4
-data +=([COMMANDS.inv['CMD_SCAN_DATA']] + LINE)* START_LINES                
+data += ([COMMANDS.inv['CMD_SCAN_DATA']] + LINE)* QUEUE_LEN
 
 
 pruss = Icss("/dev/uio/pruss/module")
@@ -46,17 +47,16 @@ irq = Uio("/dev/uio/pruss/irq%d" % IRQ )
 
 pruss.initialize()
 
-pruss.intc.ev_ch[EVENT0] = IRQ
-pruss.intc.ev_clear_one(EVENT0)
-pruss.intc.ev_enable_one(EVENT0)
+pruss.intc.ev_ch[PRU0_ARM_INTERRUPT] = IRQ
+pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
+pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
 
 pruss.core0.load('./stabilizer.bin')
 pruss.core0.dram.write(data)
-pruss.intc.out_enable_one(IRQ)
+pruss.core0.run()
 
-irq.irq_recv()
-event = pruss.intc.out_event[IRQ]
-pruss.intc.ev_clear_one(event)
+
+pruss.intc.out_enable_one(IRQ)
 
 
 if TOTAL_LINES > QUEUE_LEN:
@@ -66,35 +66,43 @@ if TOTAL_LINES > QUEUE_LEN:
 byte = START_RINGBUFFER # increased scanline size each loop
 response = 1
 while True:
-    data = [1] + LINE
+    data = [COMMANDS.inv['CMD_SCAN_DATA']] + LINE
+    if response >= TOTAL_LINES - QUEUE_LEN:
+        data = [COMMANDS.inv['CMD_EXIT']]
     irq.irq_recv()
     pruss.intc.ev_clear_one(pruss.intc.out_event[IRQ])
+    pruss.intc.out_enable_one(IRQ)
     [command_index] = pruss.core0.dram.map(length = 1, offset = byte)
     try:
         command = COMMANDS[command_index]
         if command == 'CMD_EMPTY':
-            pruss.core0.write(data, offset = byte)    
+            pruss.core0.dram.write(data, offset = byte)    
         else:
-            print("COMMAND RECEIVED")
-            print(COMMANDS[command_index])
+            print("Command received; {}".format(command))
             break
     except IndexError:
-        print("ERROR, command out of index received")
-        print(command_index)
+        print("ERROR, command out of index; index {}".format(command_index))
         break
     byte += SCANLINE_DATA_SIZE + 1
     if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
-        byte = 1
-    if response > TOTAL_LINES:
-        break
+        byte = START_RINGBUFFER
     response += 1
+    if response == TOTAL_LINES:
+        break
+    if not response%(RPM/60*FACETS):
+        print("Sent {} lines".format(response))
 
-print("Sent {} lines.".format(response))
+while not pruss.core0.halted:
+    pass
+
+[command_index] = pruss.core0.dram.map(length = 1, offset = byte)
+print("Command received; {}".format(COMMANDS[command_index]))
+
+print("In total, sent {} lines".format(response))
 
 error_index = pruss.core0.dram.map(length = 1, offset = 0)[0]
 try:
-    print("ERROR RECEIVED")
-    print(ERRORS[error_index])
+    print("Error received; {}".format(ERRORS[error_index]))
 except IndexError:
     print("ERROR, error out of index")
 

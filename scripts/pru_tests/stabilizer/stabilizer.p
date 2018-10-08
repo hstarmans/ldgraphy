@@ -358,8 +358,8 @@ STATE_AWAIT_MORE_DATA:
 	QBNE active_data_wait, v.wait_countdown, 0
 	;; ok, we waited too long, let us switch off motors and go back
 	;; to idle.
-        MOV r1, 1000000
-        QBLT ringbufferreset, r1, v.sync_fails ; random to prevent overflow
+        MOV r1, 1000000 ; random just some upper limit to prevent overflow
+        QBLT ringbufferreset, r1, v.sync_fails 
         ADD v.sync_fails, v.sync_fails, 1
 ringbufferreset:
 	SET v.gpio_out1, GPIO_MOTORS_ENABLE ; negative logic
@@ -412,7 +412,7 @@ FINISH:
 	;; Tell host that we have seen the CMD_EXIT and acknowledge with CMD_DONE
 	MOV r1.b0, CMD_DONE
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
-	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; Tell that we are done.
+        SBCO v.sync_fails, CONST_PRUDRAM, 1, 4
 	HALT
 
 REPORT_ERROR_MIRROR:
