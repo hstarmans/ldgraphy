@@ -1,15 +1,14 @@
-""" blinkled.py - test script for the PyPRUSS library
+#!/usr/bin/python3
+""" blinklaser.py - test script for the Firestarter
 blinks the laser 3 times with a period of 6 seconds
 """
+from pyuio.ti.icss import Icss
 
-import pypruss
-
-#pypruss.modprobe()        # This only has to be called once pr boot
-pypruss.init()                                      
-pypruss.open(0)                                     
-pypruss.pruintc_init()                              
-pypruss.exec_program(0, "./blinklaser.bin")    
-pypruss.wait_for_event(0)                           
-pypruss.clear_event(0,pypruss.PRU0_ARM_INTERRUPT)    
-pypruss.pru_disable(0)                              
-pypruss.exit()                                      
+pruss = Icss('/dev/uio/pruss/module')
+pruss.initialize()
+core = pruss.core0
+core.load('/blinklaser.bin')
+core.run()
+print('Waiting for core to halt')
+while not core.halted:
+    pass

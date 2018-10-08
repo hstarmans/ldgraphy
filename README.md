@@ -27,7 +27,7 @@ The prism has to be glued on top of the polygon motor.
 
 Work in Progress
 ----------------
-The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 2.
+The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3.
 
 Image used
 --------------
@@ -69,7 +69,7 @@ sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
 Install pasm
 ------------
-First, install the PRU assembler and prussdrv library:
+Install the PRU assembler and prussdrv library as follows:
 ```
 cd ~
 git clone git@github.com:beagleboard/am335x_pru_package.git

@@ -1,108 +1,77 @@
-""" stabilizer.py - test script for the firestarter board
+#!/usr/bin/python3
+""" stabilizer.py - test script for the Firestarter board
 A single line is uploaded to the laser scanner.
 The middle pixel of this line is on and the other pixels are off.
-The data is uploaded to the pru.
+The data is uploaded to the PRU.
 The polygon is spun at a rate of x Hz for x seconds.
 The position of the laser is determined and a stable line should be projected.
-If this is the case the test is succesfull.
+The result of this test is measured with a camera with a neutral density filter
+and without a lens.
 """
-from __future__ import print_function
+from pyuio.ti.icss import Icss
+from pyuio.uio import Uio
+from bidict import bidict
 
-PRUSS0_PRU0_DATARAM = 0
-PRUSS0_PRU1_DATARAM = 1
-PRUSS0_PRU0_IRAM = 2
-PRUSS0_PRU1_IRAM = 3
-PRUSS0_SHARED_DATARAM = 4
-
-import pypruss                              
-import struct
-import mmap
-import numpy as np
-
-# BEAGLE BONE CONSTANTS
-PRU_ICSS = 0x4A300000
-PRU_ICSS_LEN = 512 * 1024
-
-RAM0_START = 0x00000000
-RAM1_START = 0x00002000
-RAM2_START = 0x00012000
+IRQ = 2      # range 2 .. 9
+EVENT0 = 19  # range 16 .. 31
 
 # CONSTANTS LASERSCANNER
 COMMANDS = ['CMD_EMPTY', 'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
 COMMANDS += ['CMD_EXIT', 'CMD_DONE']
-ERRORS = ['ERROR_NONE', 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC', 'ERROR_TIME_OVERRUN']
-
-# needed for memory read
-with open("/dev/mem", "r+b") as f:
-    ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
-    ddr_mem[RAM0_START:RAM0_START + 4] = struct.pack('L', 0)
-
+COMMANDS = bidict(enumerate(COMMANDS))
+ERRORS = ['ERROR_NONE', 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC']
+ERRORS += ['ERROR_TIME_OVERRUN']
+ERRORS = bidict(enumerate(ERRORS))
+SCANLINE_DATA_SIZE = 512
+QUEUE_LEN = 8
+RPM = 2400
+FACETS = 4
 
 # line
-scanline_data_size = 512
-queue_len = 8
-line = [2]*scanline_data_size
-RPM = 2400
-facets = 4
-duration = 10  # seconds
-
-total_lines = RPM*duration/60*facets
+LINE = [2]*SCANLINE_DATA_SIZE
+DURATION = 10  # seconds
+TOTAL_LINES = RPM*DURATION/60*FACETS
 
 
-# TODO: engine locks if you send a zero as command
-#       so if data arrives too late no real error
-# TODO: improve understanting of data_wait state, why does he send out zero
-# TODO: machine halts at zero
-# TODO: why is there a ringbuffer!?
-# START
-start_lines = queue_len if total_lines > queue_len else total_lines
-# byte zero is error byte
-data = [0]+([1] + line)* start_lines + [10]               
-bit_data = (len(data)//4+1)*[0]
-for idx, item in enumerate(data):
-    bit_data[idx//4]+=item<<(8*(idx%4))
-
-#pypruss.modprobe()                # This only has to be called once pr boot
-pypruss.init()                                      
-pypruss.open(0)                                     
-pypruss.pruintc_init()
-pypruss.pru_write_memory(0, 0, bit_data)        # Load the data in the PRU ram
-pypruss.exec_program(0, "./stabilizer.bin")    
+# DATA to send before PRU start
+START_LINES = QUEUE_LEN if TOTAL_LINES > QUEUE_LEN else TOTAL_LINES
+data = [ERRORS.inv['ERROR_NONE']]
+data +=([COMMANDS.inv['CMD_SCAN_DATA']] + LINE)* START_LINES                
 
 
-if total_lines > queue_len:
-    total_lines -= queue_len
+pruss = Icss("/dev/uio/pruss/module")
+irq = Uio("/dev/uio/pruss/irq%d" % IRQ )
+
+pruss.initialize()
+
+pruss.intc.ev_ch[EVENT0] = IRQ
+pruss.intc.ev_clear_one(EVENT0)
+pruss.intc.ev_enable_one(EVENT0)
+
+pruss.core0.load('./stabilizer.bin')
+pruss.core0.dram.write(data)
+pruss.intc.out_enable_one(IRQ)
+
+irq.irq_recv()
+event = pruss.intc.out_event[IRQ]
+pruss.intc.ev_clear_one(event)
 
 
-# continue_line
-#data = ([1] + line)                
-#bit_data = (len(data)//4+1)*[0]
-#for idx, item in enumerate(data):
-#    bit_data[idx//4]+=item<<(8*(idx%4))
+if TOTAL_LINES > QUEUE_LEN:
+    TOTAL_LINES -= QUEUE_LEN
 
 
-byte = 1 # note byte0 is error
+byte = 1 # byte0 is error, increased scanline size each loop
 response = 1
 while True:
-    pypruss.wait_for_event(0)                           
-    pypruss.clear_event(0, pypruss.PRU0_ARM_INTERRUPT)
-    # read out result and state of the program
-    with open("/dev/mem", "r+b") as f:
-        # byte number should be set via amount interrupts received
-        ddr_mem = mmap.mmap(f.fileno(), PRU_ICSS_LEN, offset=PRU_ICSS)
-        # substracted 1 to read out error
-        local = struct.unpack('L',
-                              ddr_mem[RAM0_START+byte-1:RAM0_START
-                                +byte - 1 + 4])
-    # START_RINGBUFFER 1 --> ja hij zit in de 1//4 (eerste vier bytes)
-    # bit shift to get the first byte
-    # bit mask to ignore higher bytes
-    command_index = (local[0]>>8*1)&255
+    data = [1] + LINE
+    irq.irq_recv()
+    pruss.intc.ev_clear_one(pruss.intc.out_event[IRQ])
+    [command_index] = pruss.core0.dram.map(length = 1, offset = byte)
     try:
         command = COMMANDS[command_index]
         if command == 'CMD_EMPTY':
-            if response%queue_len == 0:
-                pypruss.pru_write_memory(0, 0, bit_data)
+            pruss.core0.write(data, offset = byte)    
         else:
             print("COMMAND RECEIVED")
             print(COMMANDS[command_index])
@@ -111,21 +80,18 @@ while True:
         print("ERROR, command out of index received")
         print(command_index)
         break
-    byte += scanline_data_size+1
-    if byte > scanline_data_size*queue_len:
+    byte += SCANLINE_DATA_SIZE + 1
+    if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
         byte = 1
-    if response > total_lines:
+    if response > TOTAL_LINES:
         break
     response += 1
 
-print("Sent " + str(response) + " lines.")
-        
-error_index = local[0]&255
+print("Sent {} lines.".format(response))
+error_index = pruss.core0.dram.map(length = 1, offset = 0)[0]
 try:
     print("ERROR RECEIVED")
     print(ERRORS[error_index])
 except IndexError:
-    print("Error, out of index")
+    print("ERROR, error out of index")
 
-pypruss.pru_disable(0)                              
-pypruss.exit()                            

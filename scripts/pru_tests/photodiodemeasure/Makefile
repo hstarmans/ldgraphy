@@ -1,5 +1,5 @@
-COMPILER = pasm 
-FILENAME = stabilizer
+COMPILER=pasm 
+FILENAME=photodiodemeasure
 
 .PHONY: clean all
 
