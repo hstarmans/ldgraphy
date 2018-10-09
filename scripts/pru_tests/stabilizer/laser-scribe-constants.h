@@ -19,43 +19,52 @@
 #ifndef LASER_SCRIBE_CONSTANTS_H
 #define LASER_SCRIBE_CONSTANTS_H
 
-// Commands sent in the header.
-#define CMD_EMPTY   0
-#define CMD_SCAN_DATA  1
+// Command list
+#define CMD_EMPTY              0
+#define CMD_SCAN_DATA          1
 #define CMD_SCAN_DATA_NO_SLED  2
-#define CMD_EXIT    3
-#define CMD_DONE    4
+#define CMD_EXIT               3
+#define CMD_DONE               4
 
-// Potential error reporting
+// Error list
 #define ERROR_NONE         0
 #define ERROR_DEBUG_BREAK  1  // For debugging 'breakpoints'
 #define ERROR_MIRROR_SYNC  2  // Mirror failed to sync.
 #define ERROR_TIME_OVERRUN 3  // state machine did not finish within TICK_DELAY
 
-// The data per segment is sent in a bit-array. The laser covers about half
-// the range of the 120 degrees it can do, wo we only send bits for the
-// first half of global time ticks.
-#define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
-#define SCANLINE_DATA_SIZE 512   // Bytes that follow, containing the bit-set.
 
-#define SCANLINE_ITEM_SIZE (SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE)
+#define CPU_SPEED  200*1000*1000       // Hz  PRU is 200 MHz
+#define TICK_DELAY 75                  // CPU cycles between each loop         
+#define LASER_FREQUENCY CPU/TICK_DELAY // Hz
 
-#define QUEUE_LEN 8
-
-// This is the CPU cycles (on the 200Mhz CPU) between each laser dot,
-// determining the pixel clock.
-// Other values are derived from this.
-#define TICK_DELAY 75
 
 // Each mirror segment is this number of pixel ticks long (only the first
 // 8*SCANLINE_DATA_SIZE are filled with pixels, the rest is dead part of the
 // segment).
-//            11000 --> 242 Hz polygon speed (Zeller)
-//            22000 --> 121 Hz
 
-#define RPM 2400
-#define FREQUENCY RPM/10
-#define TICKS_PER_MIRROR_SEGMENT 200*1000*1000/(TICK_DELAY*FREQUENCY)
+#define RPM 2400          // revolutions per minute
 #define FACETS 4
+#define FREQUENCY (RPM*FACETS)/60  // facet revolution per second, i.e. Hertz
+#define TICKS_PER_MIRROR_SEGMENT CPU_SPEED/(TICK_DELAY*FREQUENCY)
+#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/100
+#define TICKS_START (20*TICKS_PER_MIRROR_SEGMENT)/100 // start exposure at 20 percent
+#define TICKS_END (80*TICKS_PER_MIRROR_SEGMENT)/100   // end exposure at 80 percent
+
+// The data per segment is sent in a bit-array. 
+#define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
+#define SCANLINE_DATA_SIZE (TICKS_END-TICKS_START)/8   
+#define SCANLINE_ITEM_SIZE (SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE)
+#define QUEUE_LEN 8
+#define ERROR_RESULT_POS 0       // byte 0 = error
+#define SYNC_FAIL_POS   1        // byte 1-4 = sync fails
+#define START_RINGBUFFER 5       // byte 5 ... lines
+
+
+#define SPINUP_TIME 1500          // miliseconds, time needed to spin up polygon
+#define SPINUP_TICKS (SPINUP_TIME*CPU_SPEED)/(TICK_DELAY*1000)
+#define MAX_WAIT_STABLE_TIME 1125 // miliseconds, laser on waiting for sync error if expires
+#define MAX_WAIT_STABLE_TICKS (MAX_WAIT_STABLE_TIME*CPU_SPEED)/(TICK_DELAY*1000)
+#define END_OF_DATA_WAIT_TIME 750 //miliseconds, no data in time reset to idle, +1 sync fail
+#define END_OF_DATA_WAIT_TICKS (END_OF_DATA_WAIT_TIME*CPU_SPEED)/(TICK_DELAY*1000)
 
 #endif // LASER_SCRIBE_CONSTANTS_H

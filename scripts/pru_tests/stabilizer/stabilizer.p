@@ -18,8 +18,6 @@
 ;; along with LDGraphy.  If not, see <http://www.gnu.org/licenses/>.
 
 
-;; TODO(hzeller): needs some cleanup now that it is more clear what to do.
-
 #include "laser-scribe-constants.h"
 
 .origin 0
@@ -28,34 +26,20 @@
 #define PRU0_ARM_INTERRUPT 19
 #define CONST_PRUDRAM	   C24
 
-#define ERROR_RESULT_POS 0
-#define START_RINGBUFFER 5
 
 #define PRUSS_PRU_CTL      0x22000
 #define CYCLE_COUNTER_OFFSET  0x0C
-
 #define GPIO_0_BASE       0x44e07000
 #define GPIO_1_BASE       0x4804c000
-
 #define GPIO_OE           0x134
 #define GPIO_DATAOUT      0x13c
 #define GPIO_DATAIN       0x138
 
-#define GPIO_LASER_DATA   5   // GPIO_0, PIN_P9_17
-#define GPIO_MIRROR_CLOCK 4   // GPIO_0, PIN_P9_18
 
-#define GPIO_HSYNC_IN     17  // GPIO_1, PIN_P9_23
+#define GPIO_MOTORS_ENABLE 19 ; GPIO_1, PIN_P9_16
+#define GPIO_SLED_DIR 18      ; GPIO_1, PIN_P9_14
+#define GPIO_SLED_STEP 16     ; GPIO_1, PIN_P9_15
 
-#define GPIO_MOTORS_ENABLE 19 // GPIO_1, PIN_P9_16
-#define GPIO_SLED_DIR 18      // GPIO_1, PIN_P9_14
-#define GPIO_SLED_STEP 16     // GPIO_1, PIN_P9_15
-
-#define JITTER_ALLOW ((TICKS_PER_MIRROR_SEGMENT*6)/FACETS)/10
-
-// Cycles to spin up mirror.
-#define SPINUP_TICKS         4000000 ; Spinup, laser off
-#define MAX_WAIT_STABLE_TIME 3000000 ; laser on, while waiting for sync.
-#define END_OF_DATA_WAIT     2000000 ; No data for this time - finish.
 
 // Mapping some fixed registers to named variables.
 // We have enough registers to keep things readable.
@@ -184,9 +168,7 @@ INIT:
 
 	;; Set GPIO bits to writable. Output bits need to be set to 0.
 	;; GPIO-0
-	
-        
-        MOV r1, (0xffffffff ^ ((1<<GPIO_LASER_DATA)|(1<<GPIO_MIRROR_CLOCK)))
+        MOV r1, 0xffffffff 
 	MOV r2, GPIO_0_BASE | GPIO_OE
 	SBBO r1, r2, 0, 4
 
@@ -241,7 +223,7 @@ STATE_SPINUP:
 	JMP MAIN_LOOP_NEXT
 spinup_done:
 	SET r30.t1	; Now: laser on
-	MOV v.wait_countdown, MAX_WAIT_STABLE_TIME
+	MOV v.wait_countdown, MAX_WAIT_STABLE_TICKS
 	MOV v.state, STATE_WAIT_STABLE
 	JMP MAIN_LOOP_NEXT
 
@@ -259,7 +241,7 @@ STATE_WAIT_STABLE:
 wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
 	MOV v.last_hsync_time, v.hsync_time
-	branch_if_not_between wait_stable_not_synced_yet, r1, (TICKS_PER_MIRROR_SEGMENT*6)/FACETS-JITTER_ALLOW, (TICKS_PER_MIRROR_SEGMENT*6)/FACETS+JITTER_ALLOW
+	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
 	CLR r30.t1     ; laser off for now
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
 	MOV v.state, STATE_CONFIRM_STABLE
@@ -299,8 +281,16 @@ wait_for_sync_hsync_seen:
 	;; we step at the end of a data line, so here we should reset.
 	CLR v.gpio_out1, GPIO_SLED_STEP
 
-	MOV v.state, STATE_DATA_RUN
+	MOV v.state, STATE_WAIT_FOR_DATA_RUN
+        MOV v.wait_countdown, 0
 	JMP MAIN_LOOP_NEXT
+
+STATE_WAIT_FOR_DATA_RUN:
+        ADD v.wait_countdown, v.wait_countdown, 1
+        MOV r1, TICKS_START
+        QBLT MAIN_LOOP_NEXT, r1, v.wait_countdown
+        MOV v.state, STATE_DATA_RUN
+        JMP MAIN_LOOP_NEXT
 
 	;; Loop to send all the data. We go through each byte, and within that
 	;; through each bit, once per state.
@@ -349,7 +339,7 @@ advance_sled_done:
 	QBLT rb_advanced, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
 	MOV v.item_start, START_RINGBUFFER	; Wrap around
 rb_advanced:
-	MOV v.wait_countdown, END_OF_DATA_WAIT
+	MOV v.wait_countdown, END_OF_DATA_WAIT_TICKS
 	MOV v.state, STATE_AWAIT_MORE_DATA
 	JMP MAIN_LOOP_NEXT
 
@@ -412,7 +402,7 @@ FINISH:
 	;; Tell host that we have seen the CMD_EXIT and acknowledge with CMD_DONE
 	MOV r1.b0, CMD_DONE
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
-        SBCO v.sync_fails, CONST_PRUDRAM, 1, 4
+        SBCO v.sync_fails, CONST_PRUDRAM, SYNC_FAIL_POS, 4
 	HALT
 
 REPORT_ERROR_MIRROR:
