@@ -4,9 +4,8 @@ Hexastorm - Laser Direct Lithography
 http://www.hexastorm.com/
 
 A process known as Laser Direct Imaging. <br>
-Note, the image below is severely dated <br>
 
-<img src="https://www.hexastorm.com/static/laserscanner.jpg" align="center" height="300"/>
+<img src="https://www.hexastorm.com/static/box.jpg" align="center" height="300"/>
 
 The code is based upon [LDGraphy](http://ldgraphy.org/).
 
@@ -93,7 +92,12 @@ You can check whether it is working via;
 export PINS=/sys/kernel/debug/pinctrl/44e10800.pinmux/pins
 cat $PINS | grep 'pin 101'
 ```
-A good pinout view of the beagle bone is available here https://vadl.github.io/images/bbb/P9Header.png
+A good pinout view of the beagle bone is available here: <br/>
+
+P8 header <br/>
+http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP8Header.pdf
+P9 header <br/>
+http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP9Header.pdf
 
 
 Tests
@@ -142,13 +146,6 @@ IC2
 i2c is already in use; so you can't modify it you have to disable i2c
 http://www.embedded-things.com/bbb/enable-canbus-on-the-beaglebone-black/
 
-Resources
----------
-P8 header <br/>
-http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP8Header.pdf
-P9 header <br/>
-http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP9Header.pdf
-Test
 
 
 [case-pic]: https://www.hexastorm.com/static/laserscanner.jpg
