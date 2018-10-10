@@ -30,7 +30,7 @@ The project is work on progress. Currently, it is possible to reach a phase-lock
 
 Image used
 --------------
-The following image was used http://debian.beagleboard.org/images/bone-debian-9.4-iot-armhf-2018-06-17-4gb.img.xz
+The following image was used http://debian.beagleboard.org/images/bone-debian-9.5-iot-armhf-2018-10-07-4gb.img.xz
 
 Enable the PRU
 --------------
@@ -85,7 +85,7 @@ Compile the DTS to a DTBO and move it to /lib/firmware folder.
 Load the DTS via uboot with the custom cape variable, dtboverlay.
 In the laser test we have
 ```
-dtb_overlay=/lib/firmware/blinklaser.dtbo
+dtb_overlay=/lib/firmware/hexastorm.dtbo
 ```
 You can check whether it is working via;
 ```
@@ -138,13 +138,6 @@ cat /sys/class/gpio/gpio20/value
 ```
 
 
-Current issues
---------------
-
-IC2
----
-i2c is already in use; so you can't modify it you have to disable i2c
-http://www.embedded-things.com/bbb/enable-canbus-on-the-beaglebone-black/
 
 
 
