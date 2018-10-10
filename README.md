@@ -66,6 +66,9 @@ If it doesnt' work, your old bootloader in the eMMC is blocking u-boot overlays,
 ```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
+Clone the forked [py-uio](https://github.com/hstarmans/py-uio), checkout the setup branch and install. Don't forget to copy `uio-pruss.rules` file to `/etc/udev/rules.d/` and reboot.
+
+
 Install pasm
 ------------
 Install the PRU assembler and prussdrv library as follows:
