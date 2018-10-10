@@ -33,26 +33,22 @@
 #define ERROR_TIME_OVERRUN 3  // state machine did not finish within TICK_DELAY
 
 
-#define CPU_SPEED  200*1000*1000       // Hz  PRU is 200 MHz
+#define CPU_SPEED  200000000       // Hz  PRU is 200 MHz
 #define TICK_DELAY 75                  // CPU cycles between each loop         
-#define LASER_FREQUENCY CPU/TICK_DELAY // Hz
 
 
 // Each mirror segment is this number of pixel ticks long (only the first
 // 8*SCANLINE_DATA_SIZE are filled with pixels, the rest is dead part of the
 // segment).
 
-#define RPM 2400          // revolutions per minute
+#define TICKS_PER_MIRROR_SEGMENT 16666
+#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/10
+#define TICKS_START 3333 // start exposure at 20 percent
 #define FACETS 4
-#define FREQUENCY (RPM*FACETS)/60  // facet revolution per second, i.e. Hertz
-#define TICKS_PER_MIRROR_SEGMENT CPU_SPEED/(TICK_DELAY*FREQUENCY)
-#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/100
-#define TICKS_START (20*TICKS_PER_MIRROR_SEGMENT)/100 // start exposure at 20 percent
-#define TICKS_END (80*TICKS_PER_MIRROR_SEGMENT)/100   // end exposure at 80 percent
 
 // The data per segment is sent in a bit-array. 
 #define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
-#define SCANLINE_DATA_SIZE (TICKS_END-TICKS_START)/8   
+#define SCANLINE_DATA_SIZE 512   
 #define SCANLINE_ITEM_SIZE (SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE)
 #define QUEUE_LEN 8
 #define ERROR_RESULT_POS 0       // byte 0 = error
@@ -60,11 +56,9 @@
 #define START_RINGBUFFER 5       // byte 5 ... lines
 
 
-#define SPINUP_TIME 1500          // miliseconds, time needed to spin up polygon
-#define SPINUP_TICKS (SPINUP_TIME*CPU_SPEED)/(TICK_DELAY*1000)
-#define MAX_WAIT_STABLE_TIME 1125 // miliseconds, laser on waiting for sync error if expires
-#define MAX_WAIT_STABLE_TICKS (MAX_WAIT_STABLE_TIME*CPU_SPEED)/(TICK_DELAY*1000)
-#define END_OF_DATA_WAIT_TIME 750 //miliseconds, no data in time reset to idle, +1 sync fail
-#define END_OF_DATA_WAIT_TICKS (END_OF_DATA_WAIT_TIME*CPU_SPEED)/(TICK_DELAY*1000)
+#define SPINUP_TICKS 4000000 // 1.5 seconds
+
+#define MAX_WAIT_STABLE_TICKS 3000000 // 1.125 seconds, laser on waiting for sync error if expires
+#define END_OF_DATA_WAIT_TICKS 2000000 // 0.75 seconds, no data in time reset to idle, +1 sync fail
 
 #endif // LASER_SCRIBE_CONSTANTS_H

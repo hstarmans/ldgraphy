@@ -16,26 +16,17 @@ from ctypes import c_uint32
 IRQ = 2                  # range 2 .. 9
 PRU0_ARM_INTERRUPT = 19  # range 16 .. 31
 
-# laser-scribe-constants.h
+# constants needed from  laser-scribe-constants.h
 COMMANDS = ['CMD_EMPTY', 'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
 COMMANDS += ['CMD_EXIT', 'CMD_DONE']
 COMMANDS = bidict(enumerate(COMMANDS))
 ERRORS = ['ERROR_NONE', 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC']
 ERRORS += ['ERROR_TIME_OVERRUN']
 ERRORS = bidict(enumerate(ERRORS))
-
-CPU_SPEED = 200E6
-TICK_DELAY = 75
-
 RPM = 2400
 FACETS = 4
-FREQUENCY = (RPM*FACETS)//60
-TICKS_PER_MIRROR_SEGMENT = CPU_SPEED//(TICK_DELAY*FREQUENCY))
-TICKS_START = (20*TICKS_PER_MIRROR_SEGMENT)//100
-TICKS_END = (80*TICKS_PER_MIRROR_SEGMENT)//100
-
+SCANLINE_DATA_SIZE = 512
 SCANLINE_HEADER_SIZE = 1
-SCANLINE_DATA_SIZE = (TICKS_END-TICKS_START)//8
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
 QUEUE_LEN = 8
 ERROR_RESULT_POS = 0
@@ -68,7 +59,7 @@ pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
 pruss.core0.load('./stabilizer.bin')
 pruss.core0.dram.write(data)
 pruss.core0.run()
-
+print("running core and uploaded data")
 
 byte = START_RINGBUFFER # increased scanline size each loop
 response = 1

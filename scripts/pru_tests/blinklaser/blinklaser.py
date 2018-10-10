@@ -7,7 +7,7 @@ from pyuio.ti.icss import Icss
 pruss = Icss('/dev/uio/pruss/module')
 pruss.initialize()
 core = pruss.core0
-core.load('/blinklaser.bin')
+core.load('blinklaser.bin')
 core.run()
 print('Waiting for core to halt')
 while not core.halted:

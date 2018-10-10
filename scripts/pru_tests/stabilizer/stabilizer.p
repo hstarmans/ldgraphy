@@ -161,7 +161,7 @@ INIT:
 
 	;; switch the laser full on at this period so that we reliably hit the
 	;; hsync sensor.
-	MOV v.start_sync_after, (TICKS_PER_MIRROR_SEGMENT*6)/FACETS - 2*JITTER_ALLOW
+	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - 2*JITTER_ALLOW
 
         ;; TODO: remove laser data, mirror clock, sled step
         ;;       put enable, sled dir on the right buffer
@@ -379,7 +379,7 @@ MAIN_LOOP_NEXT:
 
 	;; time for mirror toggle ?
 	ADD v.polygon_time, v.polygon_time, 1
-	MOV r1, TICKS_PER_MIRROR_SEGMENT/2
+	MOV r1, (TICKS_PER_MIRROR_SEGMENT*FACETS/6)/2
 	QBLT mirror_toggle_done, r1, v.polygon_time
 	XOR r30, r30, (1<<5)
 	MOV v.polygon_time, 0
