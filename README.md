@@ -94,10 +94,8 @@ cat $PINS | grep 'pin 101'
 ```
 A good pinout view of the beagle bone is available here: <br/>
 
-P8 header <br/>
-http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP8Header.pdf
-P9 header <br/>
-http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP9Header.pdf
+[P8 header](http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP8Header.pdf) <br/>
+[P9 header](http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP9Header.pdf) <br/>
 
 
 Tests
