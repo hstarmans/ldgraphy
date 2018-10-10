@@ -35,7 +35,8 @@ START_RINGBUFFER = 5
 # end of laser_scribe-constants.h
 
 # line
-LINE = [2]*SCANLINE_DATA_SIZE
+data_byte = [int('10000000', 2)]  # left bit, bit 7 read out first
+LINE = data_byte*SCANLINE_DATA_SIZE
 DURATION = 10  # seconds
 TOTAL_LINES = RPM*DURATION/60*FACETS
 

@@ -211,7 +211,7 @@ STATE_IDLE:
 
 	;; prepare data
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
-	MOV v.bit_loop, 7
+	MOV v.bit_loop, 7  
 
 	JMP MAIN_LOOP_NEXT
 
@@ -318,7 +318,7 @@ data_laser_set_done:
 	JMP MAIN_LOOP_NEXT
 data_run_next_byte:
 	ADD v.item_pos, v.item_pos, 1
-	MOV v.bit_loop, 7
+	MOV v.bit_loop, 7 
 	JMP MAIN_LOOP_NEXT
 
 	;;  not really necessary to be its own state.

@@ -42,7 +42,7 @@
 // segment).
 
 #define TICKS_PER_MIRROR_SEGMENT 16666
-#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/10
+#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/400
 #define TICKS_START 3333 // start exposure at 20 percent
 #define FACETS 4
 
