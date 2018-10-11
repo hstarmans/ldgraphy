@@ -27,6 +27,7 @@ The prism has to be glued on top of the polygon motor.
 Work in Progress
 ----------------
 The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3.
+The stepper motors can be moved and homed via the limit switches.
 
 Image used
 --------------

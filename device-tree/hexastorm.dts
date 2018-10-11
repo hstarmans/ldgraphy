@@ -30,7 +30,7 @@
                                         0x048 0x27  /* P9_14 X-endstop      */
 					0x04c 0x27  /* P9_16 Y-endstop      */
 					0x040 0x07  /* P9_15 X-enable       */
-					0x17c 0x0   /* P9_19 Y-enable       */
+					0x17c 0x07  /* P9_19 Y-enable       */
 				>;
 			};
 		};

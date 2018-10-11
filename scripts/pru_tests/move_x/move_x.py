@@ -20,8 +20,7 @@ else:
 
 x_enable_output = "P9_15"
 GPIO.setup(x_enable_output, GPIO.OUT)
-GPIO.setup(x_enable_output, GPIO.HIGH)
-
+GPIO.output(x_enable_output, GPIO.LOW)
 
 # DERIVED
 CPU_SPEED = 200E6
@@ -45,4 +44,4 @@ pruss.core0.run()
 print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
-GPIO.setup(x_enable_output, GPIO.LOW)
+GPIO.output(x_enable_output, GPIO.HIGH)

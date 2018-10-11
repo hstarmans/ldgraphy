@@ -9,7 +9,7 @@ import Adafruit_BBIO.GPIO as GPIO
 # INPUT
 STEPSPEED = 60  # Hz
 STEPS = 60 * 10 
-DIRECTION = 1
+DIRECTION = True
 
 y_direction_output = "P9_20"
 GPIO.setup(y_direction_output, GPIO.OUT)
@@ -20,7 +20,7 @@ else:
 
 y_enable_output = "P9_19"
 GPIO.setup(y_enable_output, GPIO.OUT)
-GPIO.output(y_enable_output, GPIO.HIGH)
+GPIO.output(y_enable_output, GPIO.LOW)
 
 # DERIVED
 CPU_SPEED = 200E6
@@ -44,4 +44,4 @@ pruss.core0.run()
 print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
-GPIO.output(y_enable_output, GPIO.LOW)
+GPIO.output(y_enable_output, GPIO.HIGH)
