@@ -19,16 +19,18 @@
 		__overlay__ {
 			pinctrl_test: pinctrl_test_0_pins {
 				pinctrl-single,pins = <
-					0x1ac 0x05  /* P9.25 Polygon Enable */
-					0x1a4 0x05  /* P9.27 Polygon PWM    */
-                                        0x194 0x05  /* P9.29 Laserdiode     */
-				        0x1a8 0x26  /* P9.41 Photodiode     */
-                                        0x178 0x07  /* P9.20 Y-dir          */
-                                        0x078 0x07  /* P9.12 X-dir          */
-					0x19c 0x05  /* P9.28 X-step         */
-					0x198 0x05  /* P9.30 Y-step         */
-                                        0x048 0x27  /* P9.14 X-endstop      */
-					0x04c 0x27  /* P9.16 Y-endstop      */
+					0x1ac 0x05  /* P9_25 Polygon Enable */
+					0x1a4 0x05  /* P9_27 Polygon PWM    */
+                                        0x194 0x05  /* P9_29 Laserdiode     */
+				        0x1a8 0x26  /* P9_41 Photodiode     */
+                                        0x178 0x07  /* P9_20 Y-dir          */
+                                        0x078 0x07  /* P9_12 X-dir          */
+					0x19c 0x05  /* P9_28 X-step         */
+					0x198 0x05  /* P9_30 Y-step         */
+                                        0x048 0x27  /* P9_14 X-endstop      */
+					0x04c 0x27  /* P9_16 Y-endstop      */
+					0x040 0x07  /* P9_15 X-enable       */
+					0x17c 0x0   /* P9_19 Y-enable       */
 				>;
 			};
 		};

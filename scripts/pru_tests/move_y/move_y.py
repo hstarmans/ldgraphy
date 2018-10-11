@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-""" move_x.py - test script for the Firestarter
-moves the x-motor for a given amount of steps and stepspeed
+""" move_y.py - test script for the Firestarter
+moves the y-motor for a given amount of steps and stepspeed
 """
 from pyuio.ti.icss import Icss
 import ctypes
@@ -11,13 +11,16 @@ STEPSPEED = 60  # Hz
 STEPS = 60 * 10 
 DIRECTION = 1
 
-y_direction_output = "P9.20"
-GPIO.SETUP(y_direction_output, GPIO.OUT)
+y_direction_output = "P9_20"
+GPIO.setup(y_direction_output, GPIO.OUT)
 if DIRECTION:
     GPIO.output(y_direction_output, GPIO.HIGH)
 else:
     GPIO.output(y_direction_output, GPIO.LOW)
 
+y_enable_output = "P9_19"
+GPIO.setup(y_enable_output, GPIO.OUT)
+GPIO.output(y_enable_output, GPIO.HIGH)
 
 # DERIVED
 CPU_SPEED = 200E6
@@ -37,8 +40,8 @@ params0 = pruss.core0.dram.map(Params)
 params0.steps = round(STEPS)
 params0.halfperiodstep = round(HALF_PERIOD_STEP)
 pruss.core0.load('move_y.bin')
-current_time = time.time()
 pruss.core0.run()
 print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
+GPIO.output(y_enable_output, GPIO.LOW)
