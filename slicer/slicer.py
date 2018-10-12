@@ -3,42 +3,33 @@
 @author: Rik Starmans
 '''
 
-import vtk
-from vtk.util.numpy_support import vtk_to_numpy # install from conda-forge see github, search vtk=7.1.0=py35_2 
 import math
 import numpy as np
 import os
 from scipy import ndimage
-import cv2 # conda install -c menpo opencv3
-# to profile memory
-# from memory_profiler import profile
-# import above decorator and decorate functions with @profile
+from PIL import Image
 
 class slicer(object):
     '''
     This object creates the slices for the Hexastorm.
 
-    VTK cuts the CAD file into a slice at a given height whereafter it is converted to an array by Numpy. The
-    interior of a contour is set to 255, the exterior to 0.
+    A post script file is converted to an numpy array. 
     The positions of the laserdiode are calculated via the function createcoordinates. The function patternfiles interpolates
-    the array created by VTK. If the laser frequency is on for two seconds with a frequency of
-    100.000; there are a 200.000 xy positions and the patternfile is a list of 200.000 values.
-    These values are either 0 (laser off) or 1 (laser on). The slicer object has functions to write binary files
-    which can be pushed to the SDRAM. The slicer can also read binary files and render them and
+    the array created. These values are either 0 (laser off) or 1 (laser on). The slicer object has functions to write binary files
+    which can be pushed to the PRU. The slicer can also read binary files and render them and
     saves it as image.
     '''
 
     def __init__(self):
         # PARAMETERS
         self.tiltangle = np.radians(90)   # angle [radians]
-        self.laserfrequency = 100000      # the laser frequency [Hz]
+        self.laserfrequency = 2.6E6       # the laser frequency [Hz]
         self.rotationfrequency = 1000     # rotation frequency [Hz]
-        self.facets = 6                   # number of facets
-        self.inradius = 17.3              # inradius polygon [mm]
+        self.facets = 4                   # number of facets
+        self.inradius = 15                # inradius polygon [mm]
         self.n = 1.49                     # refractive index
         self.pltfxsize = 200              # platform size scanning direction [mm]
         self.pltfysize = 200              # platform size stacking direction [mm]
-        self.layerheight = 0.1            # slice thickness [mm]
         self.samplegridsize = 0.05        # height/width of the sample gridth [mm]
         self.stagespeed = 100             # mm/s
         # STORAGE LOCATIONS
@@ -48,118 +39,27 @@ class slicer(object):
         currentdir = os.path.dirname(os.path.realpath(__file__))
         self.uploadfolder = os.path.join(currentdir, 'static','upload')
         self.patfolder = os.path.join(currentdir,'static','patternfiles')
-        #VTK
-        self.reader = None             # STL reader, set via filename
-        self.mapper = None             # polydata, set via filename
-        #DERIVED CONSTANTS
+        # DERIVED CONSTANTS
         self.TSTEP = 1/self.laserfrequency
         self.FACETANGLE = np.radians((180-360/self.n)) # facet angle in radians [rad]
 
-    @property
-    def filename(self):
-        return self._filename
 
-    @filename.setter
-    def filename(self, name='oshw.stl'):
-        self._filename=name
-        self.reader = vtk.vtkSTLReader()
-        self.reader.SetFileName(os.path.join(self.uploadfolder ,self.filename))
-        self.mapper = vtk.vtkPolyDataMapper()
-        self.mapper.SetInputConnection(self.reader.GetOutputPort())
+    def pstoarray(self, url):
+        '''converts postscript file to an array
 
-    def getlayers(self):
+        :param url: path to postcript file
         '''
-        return number of layers in the object
-        '''
-
-        bounds = self.mapper.GetBounds()
-        layers = math.floor((bounds[5]-bounds[4])/self.layerheight)
-        return layers
-
-    def stltoarray(self, zheight):
-        '''slices STL to an array
-
-        The height is the position where the layer is retrieved.
-        :param zheigh: z height where to take a cut in mm
-        '''
-        # generate contour by cutting the STL through its center axis aligned with
-        # a plane
-        # NOTE: an alternative might be to use the VTK imagemapper class
-        contourCutter = vtk.vtkCutter()
-        contourCutter.SetInputConnection(self.reader.GetOutputPort())
-        cutPlane = vtk.vtkPlane()
-        cntr=list(self.mapper.GetCenter())
-        cutPlane.SetOrigin(cntr[0],cntr[1],zheight)
-        cutPlane.SetNormal(0, 0, 1)
-        contourCutter.SetCutFunction(cutPlane)
-        stripper = vtk.vtkStripper()
-        stripper.SetInputConnection(contourCutter.GetOutputPort())
-        stripper.Update()  #updates are crucial
-        # that's our contour
-        contour = stripper.GetOutput()
-        # prepare the binary image's voxel grid
-        bounds = [0]*6
-        contour.GetBounds(bounds)
-        # spacing is [width, height, length]  #TODO: does the length effect the sampling?
-        spacing = [self.samplegridsize, self.samplegridsize, self.layerheight]
-        # compute dimensions
-        dim = [0]*3
-        for i in range(3):
-            dim[i] = int(round(math.ceil((bounds[i * 2 + 1] - bounds[i * 2]) / spacing[i]))) + 1
-            if (dim[i] < 1):
-                dim[i] = 1
-        inval = 255
-        outval = 0
-        blank=np.ones((dim[0]-1)*(dim[1]-1),dtype=np.uint8)*inval # create an array of 255
-        blank_string = blank.tostring()
-        dataImporter = vtk.vtkImageImport()
-        dataImporter.CopyImportVoidPointer(blank_string,len(blank_string))
-        dataImporter.SetDataScalarTypeToUnsignedChar()
-        dataImporter.SetNumberOfScalarComponents(1)
-        dataImporter.SetWholeExtent(0, dim[0]-1, 0, dim[1]-1, 0, dim[2] - 1)
-        dataImporter.SetDataExtent(0, dim[0]-1, 0, dim[1]-1, 0, dim[2] - 1)
-        origin = [0]*3
-        origin[0] = bounds[0]
-        origin[1] = bounds[2]
-        origin[2] = bounds[4]
-
-        # polygonal data - image stencil:
-        pol2stenc = vtk.vtkPolyDataToImageStencil()
-        pol2stenc.SetInputConnection(stripper.GetOutputPort())
-        pol2stenc.DebugOn()
-        pol2stenc.SetOutputOrigin(origin)
-        pol2stenc.SetOutputSpacing(spacing)
-        pol2stenc.SetOutputWholeExtent(dataImporter.GetDataExtent())
-
-        # cut the corresponding white image and set the background:
-        imgstenc = vtk.vtkImageStencil()
-        imgstenc.SetInputConnection(dataImporter.GetOutputPort())
-        imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
-        imgstenc.ReverseStencilOff()
-        imgstenc.SetBackgroundValue(outval)
-
-        imgstenc.Update()
-        # convert the stencil to a numpy array
-        vtk_image = imgstenc.GetOutput()
-        width, height, _ = vtk_image.GetDimensions()
-        vtk_array = vtk_image.GetPointData().GetScalars()
-        components = vtk_array.GetNumberOfComponents()
-        arr = vtk_to_numpy(vtk_array).reshape(height, width, components)
-        # only grab values layer 0
-        arr=arr[:,:,0].astype(np.uint8, copy=False)
-        # slices are extended, the object is kept at the center
-        # extension is done via padding with zeroes
-        padheight = round(self.pltfysize/self.samplegridsize-height)
-        padwidth = round(self.pltfxsize/self.samplegridsize-width)
-        arr = np.lib.pad(arr, ((round(padheight/2), math.floor(padheight/2)), (round(padwidth/2), math.floor(padwidth/2))), mode='constant', constant_values=0)
-        arr = np.flipud(arr)
-        return arr
-
-    def createpreview(self, arr, filename=None):
-        resized_image = cv2.resize(arr, (400, 400))
-        if filename == None:
-            filename = os.path.join(self.patfolder,'preview.png')
-        cv2.imwrite(filename,resized_image)
+        psppoint = 0.3527777778 # 1 post script in mm
+        tmp = Image.open(url)
+        x_size, y_size = [i*psppoint for i in tmp.size]
+        if x_size > self.pltfxsize or y_size > self.pltfysize:
+            raise Exception('Object does not fit on platform')
+        scale = psppoint/self.samplegridsize
+        tmp.load(scale = scale)
+        tmp_array = np.array(tmp.convert('1'))
+        if tmp_array.max() == 0:
+            raise Exception("Slice is empty")
+        return tmp_array
 
     def displacement(self, pixel):
         '''
@@ -177,6 +77,7 @@ class slicer(object):
                                             (np.power(self.n,2)-np.power(np.sin(angle),2)),0.5)))
         return disp
 
+
     def fxpos(self, pixel, xstart):
         '''
         returns the laserdiode x-position in pixels type int
@@ -186,6 +87,7 @@ class slicer(object):
         xpos = np.sin(self.tiltangle)*self.displacement(pixel)+xstart
         #NOTE: float leadis to additional patterns in final slice
         return xpos//self.samplegridsize
+
 
     def fypos(self, pixel, ystart):
         '''
@@ -197,6 +99,7 @@ class slicer(object):
         #NOTE: float leads to additional patterns in the final slice
         return ypos//self.samplegridsize
 
+
     def createcoordinates(self, xstart, ystart):
         '''
         returns the x.y position of the laserdiode for each pixel
@@ -204,6 +107,7 @@ class slicer(object):
         :param ystart: the y-start position in [mm]
         '''
         self.nofpixels = round(self.pltfysize/self.stagespeed*self.laserfrequency)
+        #TODO: correct for the fact that you don't use all pixels!
         #NOTE: round should be replaced with upper limit
         vfxpos = np.vectorize(self.fxpos)
         vfypos = np.vectorize(self.fypos)
@@ -213,23 +117,33 @@ class slicer(object):
         ids = np.concatenate(([xpos],[ypos]))
         return ids
 
-    def patternfile(self, zheight, xstart, ystart):
+
+    def patternfile(self, url, xstart, ystart):
         '''returns the pattern file as numpy array, shape (pixels,)
 
-        The CAD file is sliced at height, zheight. For the x-start and y-start position.
-        :param zheight: the height in mm, typically height should be larger than 0.
+        The postscript file is interpolated, for the x-start and y-start position.
+        :param url: path to postscript file
         :param xstart: the x-start position in mm
         :param ystart: the y-start position in mm
         '''
-        layerarr = self.stltoarray(zheight)
-        if layerarr.max() == 0:
-            raise Exception("Slice is empty")
+        from time import time
+        ctime = time()
+
+        
+        layerarr = self.pstoarray(url)
+        print(layerarr.shape)
+        print("Retrieved layerarr")
+        print("elapsed {}".format(time()-ctime))
         ids = self.createcoordinates(xstart, ystart)
+        print(ids.shape)
+        print("Retrieved coordinates")
+        print("elapsed {}".format(time()-ctime))
         #TODO: test
         # values outside image are mapped to 0
         ptrn = ndimage.map_coordinates(input=layerarr, output=np.uint8, coordinates=ids, order=1, mode="constant",cval=0)
         # max array is set to one
-        ptrn = ptrn//255
+        print("Completed interpolation")
+        print("elapsed {}".format(time()-ctime))
         return ptrn
 
     def plotptrn(self, ptrn, xstart, ystart, step):
@@ -289,14 +203,10 @@ class slicer(object):
 
 if __name__ == "__main__":
     slic3r=slicer()
-    slic3r.layerheight=0.1
-    slic3r.filename='oshw.stl'
-    print("There are "+str(slic3r.getlayers())+" layers.")
-    arr = slic3r.stltoarray(0.1)
-    slic3r.createpreview(arr)
-    ids = slic3r.createcoordinates(0,0)
-    #NOTE: stltoarray, createcoordinates is handled by the function patternfile
-    ptrn = slic3r.patternfile(0.1,100,0)
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    url = os.path.join(dir_path, 'test-patterns', 'line-resolution-test.ps')
+    #NOTE: pstoarray, createcoordinates is handled by the function patternfile
+    ptrn = slic3r.patternfile(url,0,0)
     # diodes which are on
     # lst=[i for i in range(ptrn0.shape[0]) if ptrn0[i,:].sum()>0]
     # [i for i in range(ptrn1.shape[0]) if ptrn1[i,:].sum()>0]
@@ -304,4 +214,4 @@ if __name__ == "__main__":
     slic3r.writebin(ptrn,"test.bin")
     pat = slic3r.readbin("test.bin")
     # testing the slices can only be done at 64 bit, VTK is however installed for 32 bit
-    slic3r.plotptrn(pat, 0, 0, 1)
+    #slic3r.plotptrn(pat, 0, 0, 1)

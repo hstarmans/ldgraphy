@@ -102,6 +102,15 @@ A good pinout view of the beagle bone is available here: <br/>
 [P9 header](http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP9Header.pdf) <br/>
 
 
+Slicer
+-------
+The STL capabilities of the slicer has been removed for now. Look into the git history for inspiration.
+```
+sudo apt install imagemagick
+```
+
+
+
 Tests
 --------------
 Laser <br />
