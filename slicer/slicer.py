@@ -4,10 +4,12 @@
 '''
 
 import math
-import numpy as np
 import os
+
+import numpy as np
 from scipy import ndimage
 from PIL import Image
+
 
 class slicer(object):
     '''
@@ -23,15 +25,19 @@ class slicer(object):
     def __init__(self):
         # PARAMETERS
         self.tiltangle = np.radians(90)   # angle [radians]
-        self.laserfrequency = 2.6E6       # the laser frequency [Hz]
-        self.rotationfrequency = 1000     # rotation frequency [Hz]
+        self.laserfrequency = 20          # the laser frequency [Hz]
+        self.rotationfrequency = 1000     # rotation frequency polygon [Hz]
         self.facets = 4                   # number of facets
         self.inradius = 15                # inradius polygon [mm]
         self.n = 1.49                     # refractive index
         self.pltfxsize = 200              # platform size scanning direction [mm]
         self.pltfysize = 200              # platform size stacking direction [mm]
+        self.samplexsize = 0              # sample size scanning direction [mm]
+        self.sampleysize = 0              # sample size stacking direction [mm] 
         self.samplegridsize = 0.05        # height/width of the sample gridth [mm]
         self.stagespeed = 100             # mm/s
+        self.startpixel = 10              # pixel determine via camera
+        self.pixelinline = 230            # number of pixels in a line
         # STORAGE LOCATIONS
         # Two locations are distinguished; 1. Storage location of patternfiles
         #                                  2. Storage location of uploadfiles
@@ -40,6 +46,7 @@ class slicer(object):
         self.uploadfolder = os.path.join(currentdir, 'static','upload')
         self.patfolder = os.path.join(currentdir,'static','patternfiles')
         # DERIVED CONSTANTS
+        #TODO: remove TSTEP
         self.TSTEP = 1/self.laserfrequency
         self.FACETANGLE = np.radians((180-360/self.n)) # facet angle in radians [rad]
 
@@ -54,6 +61,7 @@ class slicer(object):
         x_size, y_size = [i*psppoint for i in tmp.size]
         if x_size > self.pltfxsize or y_size > self.pltfysize:
             raise Exception('Object does not fit on platform')
+        self.samplexsize, self.sampleysize = x_size, y_size
         scale = psppoint/self.samplegridsize
         tmp.load(scale = scale)
         tmp_array = np.array(tmp.convert('1'))
@@ -67,6 +75,8 @@ class slicer(object):
 
         :param pixel; the pixelnumber
         '''
+        #TODO: don't understand the 4
+        #      can this become negative or does it vary from 0 to displacement
         angle = (self.rotationfrequency*4*np.pi*self.TSTEP*pixel)%self.FACETANGLE-self.FACETANGLE/2
         # NOTE:
         # In an earlier version, the angles which were not projected were skipped in the
@@ -78,43 +88,75 @@ class slicer(object):
         return disp
 
 
-    def fxpos(self, pixel, xstart):
+    def fxpos(self, pixel):
         '''
         returns the laserdiode x-position in pixels type int
         :param i: the pixelnumber
         :param xstart: the x-start position [mm]
         '''
-        xpos = np.sin(self.tiltangle)*self.displacement(pixel)+xstart
+        pixel = self.startpixel + pixel % self.pixelinline
+        xpos = np.sin(self.tiltangle)*self.displacement(pixel)
         #NOTE: float leadis to additional patterns in final slice
         return xpos//self.samplegridsize
 
 
-    def fypos(self, pixel, ystart):
+    def fypos(self, pixel, direction):
         '''
         returns the laserdiode y-position in pixels type int
         :param pixel: the pixelnumber
         :param ystart: the y-start position in [mm]
+        :param direction: True is +, False is -
         '''
-        ypos = np.cos(self.tiltangle)*self.displacement(pixel)+self.TSTEP*pixel*self.stagespeed+ystart
+        line_pixel = self.startpixel + pixel % self.pixelinline
+        if direction:
+            ypos = np.cos(self.tiltangle)*self.displacement(line_pixel) + line_pixel/self.laserfrequency*self.stagespeed
+        else:
+            ypos = np.cos(self.tiltangle)*self.displacement(line_pixel) - line_pixel/self.laserfrequency*self.stagespeed
         #NOTE: float leads to additional patterns in the final slice
         return ypos//self.samplegridsize
 
 
     def createcoordinates(self, xstart, ystart):
         '''
-        returns the x.y position of the laserdiode for each pixel
+        returns the x, y position of the laserdiode for each pixel
         :param xstart: the x-start position in [mm]
         :param ystart: the y-start position in [mm]
         '''
-        self.nofpixels = round(self.pltfysize/self.stagespeed*self.laserfrequency)
-        #TODO: correct for the fact that you don't use all pixels!
-        #NOTE: round should be replaced with upper limit
+        # TODO: check distance formule (see notes above)
+        lanes = math.ceil(self.samplexsize/(self.fxpos(self.pixelinline)-self.fxpos(0)))
+        facets_inlane = math.ceil(self.rotationfrequency * self.facets * (self.sampleysize/self.stagespeed))
+        # single facet
         vfxpos = np.vectorize(self.fxpos)
         vfypos = np.vectorize(self.fypos)
-        xpos = vfxpos(range(0,self.nofpixels), xstart)
-        ypos = vfypos(range(0,self.nofpixels), ystart)
-        # concatenate; result [[x0,x1],[y0,y1]]
-        ids = np.concatenate(([xpos],[ypos]))
+        xpos_facet = vfxpos(range(0,nofpixels))
+        ypos_forwardfacet = vfypos(range(0,nofpixels), True)
+        ypos_backwardfacet = vfypos(range(0,nofpixels), False)
+        # single lane
+        xpos_lane = []
+        ypos_forwardlane = []
+        ypos_backwardlane = []
+        for facet in range(0, facets_inlane):
+            xpos_temp = xpos_facet + xstart
+            ypos_forwardtemp = ypos_forwardfacet + ystart + facet/(self.facets*self.rotationfrequency)*self.stagespeed
+            ypos_backwardtemp = ypos_backwardfacet + ystart + (facets_inlane - facet)/(self.facets*self.rotationfrequency)*self.stagespeed
+            xpos_lane.append(xpos_temp.tolist())
+            ypos_forwardlane.append(ypos_forwardtemp.tolist())
+            ypos_backwardlane.append(ypos_backwardtemp.tolist())
+        # all lanes
+        xpos_lane = np.array(xpos_lane)
+        xpos = []
+        ypos = []
+    	for lane in range(0, lanes):
+            #TODO: check that the distance function is [0 --> to infinity
+            xpos_temp = xpos_lane + lane * (self.fxpos(self.pixelinline)-self.fxpos(0))
+            if lanes % 2 == 1:
+                ypos_temp = ypos_backwardlane
+            else:
+                ypos_temp = ypos_forwardlane
+            xpos.append(xpos_temp.tolist())
+            ypos.append(ypos_temp)
+
+        ids = [xpos, ypos]        
         return ids
 
 
