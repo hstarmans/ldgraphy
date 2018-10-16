@@ -25,8 +25,8 @@ class slicer(object):
     def __init__(self):
         # PARAMETERS
         self.tiltangle = np.radians(90)   # angle [radians]
-        self.laserfrequency = 20          # the laser frequency [Hz]
-        self.rotationfrequency = 1000     # rotation frequency polygon [Hz]
+        self.laserfrequency = 42720       # the laser frequency [Hz]
+        self.rotationfrequency = 2400/60  # rotation frequency polygon [Hz]
         self.facets = 4                   # number of facets
         self.inradius = 15                # inradius polygon [mm]
         self.n = 1.49                     # refractive index
@@ -35,9 +35,10 @@ class slicer(object):
         self.samplexsize = 0              # sample size scanning direction [mm]
         self.sampleysize = 0              # sample size stacking direction [mm] 
         self.samplegridsize = 0.05        # height/width of the sample gridth [mm]
-        self.stagespeed = 100             # mm/s
+        self.stagespeed = 4.8             # mm/s
         self.startpixel = 10              # pixel determine via camera
-        self.pixelinline = 230            # number of pixels in a line
+        self.pixelsinline = 230           # number of pixels in a line
+        # pixelsfacet is a known
         # STORAGE LOCATIONS
         # Two locations are distinguished; 1. Storage location of patternfiles
         #                                  2. Storage location of uploadfiles
@@ -45,10 +46,7 @@ class slicer(object):
         currentdir = os.path.dirname(os.path.realpath(__file__))
         self.uploadfolder = os.path.join(currentdir, 'static','upload')
         self.patfolder = os.path.join(currentdir,'static','patternfiles')
-        # DERIVED CONSTANTS
-        #TODO: remove TSTEP
-        self.TSTEP = 1/self.laserfrequency
-        self.FACETANGLE = np.radians((180-360/self.n)) # facet angle in radians [rad]
+        
 
 
     def pstoarray(self, url):
@@ -61,112 +59,114 @@ class slicer(object):
         x_size, y_size = [i*psppoint for i in tmp.size]
         if x_size > self.pltfxsize or y_size > self.pltfysize:
             raise Exception('Object does not fit on platform')
+        #NOTE: this is only a crude approximation
         self.samplexsize, self.sampleysize = x_size, y_size
         scale = psppoint/self.samplegridsize
         tmp.load(scale = scale)
         tmp_array = np.array(tmp.convert('1'))
         if tmp_array.max() == 0:
-            raise Exception("Slice is empty")
+            raise Exception("Postscript file is empty")
         return tmp_array
 
     def displacement(self, pixel):
         '''
         returns the displacement for a given pixel
 
-        :param pixel; the pixelnumber
+        assumes the line starts at the positive plane
+        :param pixel; the pixelnumber, in range [0, self.pixelsfacet]
         '''
-        #TODO: don't understand the 4
-        #      can this become negative or does it vary from 0 to displacement
-        angle = (self.rotationfrequency*4*np.pi*self.TSTEP*pixel)%self.FACETANGLE-self.FACETANGLE/2
-        # NOTE:
-        # In an earlier version, the angles which were not projected were skipped in the
-        # interpolation. It could be beneficial to kill of angles outside say -30 and +30 degrees.
-        # This does make the code more cumbersome and reduces some clarity.
-        # One most also take care that this function is turned of in the plot function
+        # interiorangle = 180-360/self.n
+        # max_angle = 180-90-0.5*interiorangle
+        max_angle = 180/self.facets
+        pixelsfacet = round(self.laserfrequency/(self.rotationfrequency*self.facets))
+        angle = np.radians(- 2 * max_angle * (pixel/pixelsfacet) + max_angle)
+ 
         disp = (self.inradius*2*np.sin(angle)*(1-np.power((1-np.power(np.sin(angle),2))/
                                             (np.power(self.n,2)-np.power(np.sin(angle),2)),0.5)))
         return disp
 
 
-    def fxpos(self, pixel):
+    def fxpos(self, pixel, xstart = 0):
         '''
         returns the laserdiode x-position in pixels type int
-        :param i: the pixelnumber
-        :param xstart: the x-start position [mm]
+        :param pixel: the pixelnumber in the line
+        :param xstart: the x-start position [mm], typically your xstart is larger than 0
+                       as the displacement can be negative
         '''
-        pixel = self.startpixel + pixel % self.pixelinline
-        xpos = np.sin(self.tiltangle)*self.displacement(pixel)
-        #NOTE: float leadis to additional patterns in final slice
+        line_pixel = self.startpixel + pixel % self.pixelsinline
+        xpos = np.sin(self.tiltangle)*self.displacement(line_pixel) + xstart
+        #NOTE: float leads to additional patterns in final slice
         return xpos//self.samplegridsize
 
 
-    def fypos(self, pixel, direction):
+    def fypos(self, pixel, direction, ystart = 0):
         '''
         returns the laserdiode y-position in pixels type int
-        :param pixel: the pixelnumber
-        :param ystart: the y-start position in [mm]
+        :param pixel: the pixelnumber in the line
         :param direction: True is +, False is -
+        :param ystart: the y-start position in [mm]
         '''
-        line_pixel = self.startpixel + pixel % self.pixelinline
+        line_pixel = self.startpixel + pixel % self.pixelsinline
         if direction:
-            ypos = np.cos(self.tiltangle)*self.displacement(line_pixel) + line_pixel/self.laserfrequency*self.stagespeed
+            ypos = np.cos(self.tiltangle)*self.displacement(line_pixel)
+            ypos += line_pixel/self.laserfrequency*self.stagespeed + ystart
         else:
-            ypos = np.cos(self.tiltangle)*self.displacement(line_pixel) - line_pixel/self.laserfrequency*self.stagespeed
+            ypos = np.cos(self.tiltangle)*self.displacement(line_pixel) 
+            ypos -= line_pixel/self.laserfrequency*self.stagespeed + ystart
         #NOTE: float leads to additional patterns in the final slice
         return ypos//self.samplegridsize
 
 
-    def createcoordinates(self, xstart, ystart):
+    def createcoordinates(self):
         '''
-        returns the x, y position of the laserdiode for each pixel
-        :param xstart: the x-start position in [mm]
-        :param ystart: the y-start position in [mm]
+        returns the x, y position of the laserdiode for each pixel, for all lanes
+
+        assumes the line starts at the positive plane 
         '''
-        # TODO: check distance formule (see notes above)
-        lanes = math.ceil(self.samplexsize/(self.fxpos(self.pixelinline)-self.fxpos(0)))
+        if not self.sampleysize or not self.samplexsize:
+            raise Exception('Sampleysize or samplexsize are set to zero.')
+        if self.fxpos(0) < 0 or self.fxpos(self.pixelsinline-1) > 0:
+            raise Exception('Line seems ill positioned')
+        lanewidth = (self.fxpos(0)-self.fxpos(self.pixelsinline-1))*self.samplegridsize  # mm
+        lanes = math.ceil(self.samplexsize/(lanewidth))
         facets_inlane = math.ceil(self.rotationfrequency * self.facets * (self.sampleysize/self.stagespeed))
         # single facet
         vfxpos = np.vectorize(self.fxpos)
         vfypos = np.vectorize(self.fypos)
-        xpos_facet = vfxpos(range(0,nofpixels))
-        ypos_forwardfacet = vfypos(range(0,nofpixels), True)
-        ypos_backwardfacet = vfypos(range(0,nofpixels), False)
+        xstart = self.fxpos(self.pixelsinline-1) #TODO: make sure you account for this in your movement
+        xpos_facet = vfxpos(range(0, self.pixelsinline), xstart)
+        ypos_forwardfacet = vfypos(range(0, self.pixelsinline), True)
+        ypos_backwardfacet = vfypos(range(0, self.pixelsinline), False)
         # single lane
-        xpos_lane = []
+        xpos_lane = xpos_facet.tolist() * facets_inlane
         ypos_forwardlane = []
         ypos_backwardlane = []
         for facet in range(0, facets_inlane):
-            xpos_temp = xpos_facet + xstart
-            ypos_forwardtemp = ypos_forwardfacet + ystart + facet/(self.facets*self.rotationfrequency)*self.stagespeed
-            ypos_backwardtemp = ypos_backwardfacet + ystart + (facets_inlane - facet)/(self.facets*self.rotationfrequency)*self.stagespeed
-            xpos_lane.append(xpos_temp.tolist())
-            ypos_forwardlane.append(ypos_forwardtemp.tolist())
-            ypos_backwardlane.append(ypos_backwardtemp.tolist())
+            ypos_forwardtemp = ypos_forwardfacet + facet/(self.facets*self.rotationfrequency)*self.stagespeed
+            ypos_backwardtemp = ypos_backwardfacet + (facets_inlane - facet)/(self.facets*self.rotationfrequency)*self.stagespeed
+            ypos_forwardlane += ypos_forwardtemp.tolist()
+            ypos_backwardlane += ypos_backwardtemp.tolist()
         # all lanes
         xpos_lane = np.array(xpos_lane)
         xpos = []
         ypos = []
-    	for lane in range(0, lanes):
-            #TODO: check that the distance function is [0 --> to infinity
-            xpos_temp = xpos_lane + lane * (self.fxpos(self.pixelinline)-self.fxpos(0))
+        for lane in range(0, lanes):
+            xpos_temp = xpos_lane + lane * (self.fxpos(0)-self.fxpos(self.pixelsinline-1))
             if lanes % 2 == 1:
                 ypos_temp = ypos_backwardlane
             else:
                 ypos_temp = ypos_forwardlane
-            xpos.append(xpos_temp.tolist())
-            ypos.append(ypos_temp)
-
-        ids = [xpos, ypos]        
+            xpos += xpos_temp.tolist()
+            ypos += ypos_temp
+        ids = np.concatenate(([np.array(xpos)], [np.array(ypos)]))
         return ids
 
 
-    def patternfile(self, url, xstart, ystart):
-        '''returns the pattern file as numpy array, shape (pixels,)
+    def patternfile(self, url):
+        '''returns the pattern file as numpy array
 
-        The postscript file is interpolated, for the x-start and y-start position.
+        mostly a convenience function which wraps other functions in this class
         :param url: path to postscript file
-        :param xstart: the x-start position in mm
-        :param ystart: the y-start position in mm
         '''
         from time import time
         ctime = time()
@@ -176,7 +176,7 @@ class slicer(object):
         print(layerarr.shape)
         print("Retrieved layerarr")
         print("elapsed {}".format(time()-ctime))
-        ids = self.createcoordinates(xstart, ystart)
+        ids = self.createcoordinates()
         print(ids.shape)
         print("Retrieved coordinates")
         print("elapsed {}".format(time()-ctime))
@@ -248,7 +248,7 @@ if __name__ == "__main__":
     dir_path = os.path.dirname(os.path.realpath(__file__))
     url = os.path.join(dir_path, 'test-patterns', 'line-resolution-test.ps')
     #NOTE: pstoarray, createcoordinates is handled by the function patternfile
-    ptrn = slic3r.patternfile(url,0,0)
+    ptrn = slic3r.patternfile(url)
     # diodes which are on
     # lst=[i for i in range(ptrn0.shape[0]) if ptrn0[i,:].sum()>0]
     # [i for i in range(ptrn1.shape[0]) if ptrn1[i,:].sum()>0]
