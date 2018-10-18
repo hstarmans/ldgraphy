@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2018 Hexastorm - http://www.hexastorm.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -9,14 +9,39 @@
 /plugin/;
 
 / {
-	compatible = "ti,beaglebone", "ti,beaglebone-black";
+	compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green";
 
 	/* identification */
-	part-number = "pinctrl-test-0";
+	part-number = "firestarter";
+	version = "0.1";
+        exclusive-use =
+		"P9.12",
+		"P9.14",
+		"P9.15",
+		"P9.16",
+		"P9.19",
+		"P9.20",
+		"P9.24",	// i2c1_sda
+		"P9.25",
+		"P9.26",	// i2c1_scl
+		"P9.27",
+		"P9.28",
+		"P9.29",
+		"P9.30",
+		"P9.41",
+
+                "i2c1"; // hardware ip used0
 
 	fragment@0 {
 		target = <&am33xx_pinmux>;
 		__overlay__ {
+
+		        i2c1_pins: pinmux_i2c1_pins {
+			        pinctrl-single,pins = <
+		                        0x184 0x73  /* P9_26 I2C1-SCL */
+					0x180 0x73  /* P9_24 I2C1-SDA */ 
+		                >;
+	                };
 			pinctrl_test: pinctrl_test_0_pins {
 				pinctrl-single,pins = <
 					0x1ac 0x05  /* P9_25 Polygon Enable */
@@ -39,6 +64,7 @@
 	fragment@1 {
 		target = <&ocp>;
 		__overlay__ {
+		        
 			test_helper: helper {
 				compatible = "bone-pinmux-helper";
 				pinctrl-names = "default";
@@ -46,5 +72,28 @@
 				status = "okay";
 			};
 		};
+
 	};
+
+	fragment@2 {
+		target = <&i2c1>;
+
+		__overlay__ {
+		        pinctrl-0 = <&i2c1_pins>;
+                        pinctrl-names = "default";
+		        clock-frequency = <100000>;
+		        status = "okay";
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
+
+
+        fragment@3 {
+		target = <&i2c2>;
+		__overlay__ {
+			status = "disabled";
+		};
+        };
+
 };

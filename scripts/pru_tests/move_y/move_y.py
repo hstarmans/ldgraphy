@@ -8,7 +8,7 @@ import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
 STEPSPEED = 60  # Hz
-STEPS = 60 * 10 
+STEPS = STEPSPEED * 10 
 DIRECTION = True
 
 y_direction_output = "P9_20"

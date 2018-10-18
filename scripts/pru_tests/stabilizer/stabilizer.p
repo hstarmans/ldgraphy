@@ -161,7 +161,7 @@ INIT:
 
 	;; switch the laser full on at this period so that we reliably hit the
 	;; hsync sensor.
-	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - 2*JITTER_ALLOW
+	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW
 
         ;; TODO: remove laser data, mirror clock, sled step
         ;;       put enable, sled dir on the right buffer
