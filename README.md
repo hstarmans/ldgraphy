@@ -10,7 +10,7 @@ A process known as Laser Direct Imaging. <br>
 The code is based upon [LDGraphy](http://ldgraphy.org/).
 
 
-The BOM is in the order of $200 including the Beaglebone Green.
+The BOM of the scan head is in the order of $200 including the Beaglebone Green.
 
   * 500mW 405nm laser ($30)
   * Commonly available polygon mirror scanner (from laser printers) ($20)
@@ -22,12 +22,16 @@ The BOM is in the order of $200 including the Beaglebone Green.
   * Hexastorm hat ($30)
 
 The Hexastorm hat is not for sale and has to be produced manually. 
-The prism has to be glued on top of the polygon motor. 
+The prism has to be glued on top of the polygon motor.
+The frame was donated by [Felixprinters](https://www.felixprinters.com).
+
 
 Work in Progress
 ----------------
 The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3.
 The stepper motors can be moved and homed via the limit switches.
+The scanhad is mounted on a frame. The power of the laser can be set via a 
+digital potentiometer.
 
 Image used
 --------------

@@ -8,9 +8,9 @@ import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
-STEPSPEED = 60  # Hz
+STEPSPEED = 320  # Hz
 STEPS = 60 * 100
-DIRECTION = 1
+DIRECTION = False # False is, homing direction is up
 
 x_direction_output = "P9_12"
 GPIO.setup(x_direction_output, GPIO.OUT)

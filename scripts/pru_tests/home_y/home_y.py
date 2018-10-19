@@ -10,7 +10,7 @@ import Adafruit_BBIO.GPIO as GPIO
 # INPUT
 STEPSPEED = 60  # Hz
 STEPS = 60 * 100
-DIRECTION = 1
+DIRECTION = True  # false is up, true is to home
 
 y_direction_output = "P9_20"
 GPIO.setup(y_direction_output, GPIO.OUT)
