@@ -8,6 +8,7 @@ import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
+STEPS_PER_MM = 76.2
 STEPSPEED = 60  # Hz
 STEPS = 60 * 100
 DIRECTION = True  # false is up, true is to home

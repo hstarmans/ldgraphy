@@ -29,16 +29,6 @@
 
 #define PRUSS_PRU_CTL      0x22000
 #define CYCLE_COUNTER_OFFSET  0x0C
-#define GPIO_0_BASE       0x44e07000
-#define GPIO_1_BASE       0x4804c000
-#define GPIO_OE           0x134
-#define GPIO_DATAOUT      0x13c
-#define GPIO_DATAIN       0x138
-
-
-#define GPIO_MOTORS_ENABLE 19 ; GPIO_1, PIN_P9_16
-#define GPIO_SLED_DIR 18      ; GPIO_1, PIN_P9_14
-#define GPIO_SLED_STEP 16     ; GPIO_1, PIN_P9_15
 
 
 // Mapping some fixed registers to named variables.
@@ -46,20 +36,12 @@
 .struct Variables
 	;; Some convenient constants. 32 bit values cannot be given as
 	;; immediate, so we have to store them in registers.
-	.u32 gpio_0_read
-	.u32 gpio_1_read
-	.u32 gpio_0_write
-	.u32 gpio_1_write
-
 	.u32 ringbuffer_size
 	.u32 item_size
 
 	.u32 start_sync_after	; time after which we should start sync.
 
 	;; Variables used.
-	.u32 gpio_out0	   ; Stuff we write out GPIO 
-	.u32 gpio_out1	   ; Stuff we write out to GPIO. Bits step/dir/enable
-
 	.u32 global_time	; our cycle time.
 
 	.u32 polygon_time
@@ -77,7 +59,7 @@
 	.u8  bit_loop		; bit loop
 	.u8  last_hsync_bit	; so that we can trigger on an edge
 .ends
-.assign Variables, r10, r28, v
+.assign Variables, r10, r22, v
 
 ;; Registers
 ;; r1 ... r9 : common use
@@ -152,10 +134,6 @@ INIT:
 	SBCO r0, C4, 4, 4
 
 	;; Populate some constants
-	MOV v.gpio_0_read, GPIO_0_BASE | GPIO_DATAIN
-	MOV v.gpio_1_read, GPIO_1_BASE | GPIO_DATAIN
-	MOV v.gpio_0_write, GPIO_0_BASE | GPIO_DATAOUT
-	MOV v.gpio_1_write, GPIO_1_BASE | GPIO_DATAOUT
 	MOV v.item_size, SCANLINE_ITEM_SIZE
 	MOV v.ringbuffer_size, SCANLINE_ITEM_SIZE * QUEUE_LEN
 
@@ -163,26 +141,7 @@ INIT:
 	;; hsync sensor.
 	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW
 
-        ;; TODO: remove laser data, mirror clock, sled step
-        ;;       put enable, sled dir on the right buffer
-
 	;; Set GPIO bits to writable. Output bits need to be set to 0.
-	;; GPIO-0
-        MOV r1, 0xffffffff 
-	MOV r2, GPIO_0_BASE | GPIO_OE
-	SBBO r1, r2, 0, 4
-
-	;; GPIO-1
-	MOV r1, (0xffffffff ^ ((1<<GPIO_MOTORS_ENABLE)|(1<<GPIO_SLED_DIR)|(1<<GPIO_SLED_STEP)))
-	MOV r2, GPIO_1_BASE | GPIO_OE
-	SBBO r1, r2, 0, 4
-
-	MOV v.gpio_out0, 0
-	MOV v.gpio_out1, 0
-
-	SET v.gpio_out1, GPIO_MOTORS_ENABLE ; negative logic, so motors off.
-	CLR v.gpio_out1, GPIO_SLED_DIR ; direction needs changing later.
-	CLR v.gpio_out1, GPIO_SLED_STEP
 
 	MOV v.item_start, START_RINGBUFFER    ; command byte position in DRAM
 	MOV v.state, STATE_IDLE
@@ -207,7 +166,6 @@ STATE_IDLE:
         MOV v.last_hsync_time, 0
 	MOV v.polygon_time, 0
 	MOV v.state, STATE_SPINUP
-	CLR v.gpio_out1, GPIO_MOTORS_ENABLE ; negative logic
 
 	;; prepare data
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
@@ -279,7 +237,7 @@ wait_for_sync_hsync_seen:
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
 
 	;; we step at the end of a data line, so here we should reset.
-	CLR v.gpio_out1, GPIO_SLED_STEP
+	CLR r30.t3
 
 	MOV v.state, STATE_WAIT_FOR_DATA_RUN
         MOV v.wait_countdown, 0
@@ -328,7 +286,7 @@ STATE_ADVANCE_RINGBUFFER:
 	;; check if we need to advance stepper
 	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
 	QBEQ advance_sled_done, r1.b0, CMD_SCAN_DATA_NO_SLED
-	SET v.gpio_out1, GPIO_SLED_STEP
+	SET r30.t3
 advance_sled_done:
 	;; signal host that we are done with this item.
 	MOV r1.b0, CMD_EMPTY
@@ -352,7 +310,6 @@ STATE_AWAIT_MORE_DATA:
         QBLT ringbufferreset, r1, v.sync_fails 
         ADD v.sync_fails, v.sync_fails, 1
 ringbufferreset:
-	SET v.gpio_out1, GPIO_MOTORS_ENABLE ; negative logic
 	MOV v.state, STATE_IDLE
 	JMP MAIN_LOOP_NEXT
 
@@ -386,19 +343,11 @@ MAIN_LOOP_NEXT:
 mirror_toggle_done:
 
 	;; GPIO out, once per loop.
-	SBBO v.gpio_out0, v.gpio_0_write, 0, 4
-	SBBO v.gpio_out1, v.gpio_1_write, 0, 4
-
 	JMP MAIN_LOOP
 
 FINISH:
 	CLR r30.t1 ; laser off
         MOV r1, 0		; Switch off all GPIO bits.
-	SBBO r1, v.gpio_0_write, 0, 4
-
-	SET r1, r1, GPIO_MOTORS_ENABLE ; Well, and the motor ~enable
-	SBBO r1, v.gpio_1_write, 0, 4
-
 	;; Tell host that we have seen the CMD_EXIT and acknowledge with CMD_DONE
 	MOV r1.b0, CMD_DONE
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1

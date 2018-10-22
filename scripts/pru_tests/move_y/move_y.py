@@ -7,6 +7,7 @@ import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
+YSTEPSPERMM = 76.2 
 STEPSPEED = 60  # Hz
 STEPS = STEPSPEED * 5 
 DIRECTION = False   # false is positive

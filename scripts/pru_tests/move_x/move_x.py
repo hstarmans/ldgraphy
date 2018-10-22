@@ -7,9 +7,12 @@ import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
+XSTEPSPERMM = 76.2
+MICROSTEPPING = 1
 STEPSPEED = 160  # Hz
-STEPS = 60 * 5 
-DIRECTION = False  # 0 is positive
+STEPS = round(100 * XSTEPSPERMM)
+DIRECTION = True  # False is in the homing direction
+
 
 x_direction_output = "P9_12"
 GPIO.setup(x_direction_output, GPIO.OUT)
@@ -44,4 +47,4 @@ pruss.core0.run()
 print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
-GPIO.output(x_enable_output, GPIO.HIGH)
+GPIO.output(x_enable_output, GPIO.HIGH)  # disable motors

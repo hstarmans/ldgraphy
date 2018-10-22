@@ -12,6 +12,7 @@ from pyuio.ti.icss import Icss
 from pyuio.uio import Uio
 from bidict import bidict
 from ctypes import c_uint32
+import Adafruit_BBIO.GPIO as GPIO
 
 IRQ = 2                  # range 2 .. 9
 PRU0_ARM_INTERRUPT = 19  # range 16 .. 31
@@ -37,8 +38,27 @@ START_RINGBUFFER = 5
 # line
 data_byte = [int('10000000', 2)]  # left bit, bit 7 read out first
 LINE = data_byte*SCANLINE_DATA_SIZE
-DURATION = 10  # seconds
-TOTAL_LINES = RPM*DURATION/60*FACETS
+#DURATION = 10  # seconds
+#TOTAL_LINES = RPM*DURATION/60*FACETS
+
+# Steps
+XSTEPSPERMM = 76.2
+MICROSTEPPING = 1
+TOTAL_LINES = round(100*XSTEPSPERMM)
+DIRECTION = False # False is in the homing direction
+
+x_direction_output = "P9_12"
+GPIO.setup(x_direction_output, GPIO.OUT)
+if DIRECTION:
+    GPIO.output(x_direction_output, GPIO.HIGH)
+else:
+    GPIO.output(x_direction_output, GPIO.LOW)
+
+
+x_enable_output = "P9_15"
+GPIO.setup(x_enable_output, GPIO.OUT)
+GPIO.output(x_enable_output, GPIO.LOW) # motor on
+
 
 if TOTAL_LINES <= QUEUE_LEN:
     raise Exception("Less than {} lines!".format(QUEUE_LEN))
@@ -108,4 +128,4 @@ except IndexError:
 
 sync_fails = pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
 print("There have been {} sync fails".format(sync_fails))
-
+GPIO.output(x_enable_output, GPIO.HIGH)  # disable motors

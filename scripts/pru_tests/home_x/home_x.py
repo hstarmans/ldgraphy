@@ -8,6 +8,7 @@ import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
+XSTEP_PER_MM = 76.2
 STEPSPEED = 320  # Hz
 STEPS = 60 * 100
 DIRECTION = False # False is, homing direction is up
