@@ -9,6 +9,7 @@ import os
 import numpy as np
 from scipy import ndimage
 from PIL import Image
+import cv2  # replace with PIL
 
 
 class Interpolator:
@@ -39,15 +40,6 @@ class Interpolator:
         self.stagespeed = 4.8             # mm/s
         self.startpixel = 10              # pixel determine via camera
         self.pixelsinline = 230           # number of pixels in a line
-        # pixelsfacet is a known
-        # STORAGE LOCATIONS
-        # Two locations are distinguished; 1. Storage location of patternfiles
-        #                                  2. Storage location of uploadfiles
-        # The scripts was envisoned to be controlled via a webserver, e.g. Flask
-        currentdir = os.path.dirname(os.path.realpath(__file__))
-        self.uploadfolder = os.path.join(currentdir, 'static','upload')
-        self.patfolder = os.path.join(currentdir,'static','patternfiles')
-        
 
 
     def pstoarray(self, url):
@@ -68,6 +60,7 @@ class Interpolator:
         if tmp_array.max() == 0:
             raise Exception("Postscript file is empty")
         return tmp_array
+
 
     def displacement(self, pixel):
         '''
@@ -138,7 +131,8 @@ class Interpolator:
         # single facet
         vfxpos = np.vectorize(self.fxpos)
         vfypos = np.vectorize(self.fypos)
-        xstart = self.fxpos(self.pixelsinline-1) #TODO: make sure you account for this in your movement
+        xstart = self.fxpos(self.pixelsinline-1)*self.samplegridsize
+        # you still don't account for ystart
         xpos_facet = vfxpos(range(0, self.pixelsinline), xstart)
         ypos_forwardfacet = vfypos(range(0, self.pixelsinline), True)
         ypos_backwardfacet = vfypos(range(0, self.pixelsinline), False)
@@ -147,8 +141,8 @@ class Interpolator:
         ypos_forwardlane = []
         ypos_backwardlane = []
         for facet in range(0, facets_inlane):
-            ypos_forwardtemp = ypos_forwardfacet + facet/(self.facets*self.rotationfrequency)*self.stagespeed
-            ypos_backwardtemp = ypos_backwardfacet + (facets_inlane - facet)/(self.facets*self.rotationfrequency)*self.stagespeed
+            ypos_forwardtemp = ypos_forwardfacet + (facet*self.stagespeed)/(self.facets*self.rotationfrequency*self.samplegridsize)
+            ypos_backwardtemp = ypos_backwardfacet + ((facets_inlane-facet)*self.stagespeed)/(self.facets*self.rotationfrequency*self.samplegridsize)
             ypos_forwardlane += ypos_forwardtemp.tolist()
             ypos_backwardlane += ypos_backwardtemp.tolist()
         # all lanes
@@ -164,6 +158,8 @@ class Interpolator:
             xpos += xpos_temp.tolist()
             ypos += ypos_temp
         #NOTE: float leads to additional patterns in the final slice
+        print(max(xpos))
+        print(max(ypos))
         ids = np.concatenate(([np.array(xpos)], [np.array(ypos)]))
         return ids
 
@@ -184,13 +180,20 @@ class Interpolator:
         print("elapsed {}".format(time()-ctime))
         #TODO: test
         # values outside image are mapped to 0
+        print(layerarr.min())
+        print(layerarr.max())
+        print(layerarr.shape)
         ptrn = ndimage.map_coordinates(input=layerarr, output=np.uint8, coordinates=ids, order=1, mode="constant", cval=0)
+        print(ptrn.min())
+        print(ptrn.max())
         # max array is set to one
         print("Completed interpolation")
         print("elapsed {}".format(time()-ctime))
+        print("Final shape {}".format(ptrn.shape))
         return ptrn
 
-    def plotptrn(self, ptrn, xstart, ystart, step):
+
+    def plotptrn(self, ptrn, step):
         '''
         function can be used to plot a pattern file. The result is return as numpy array
         and stored in the patfolder under the name "plot.png"
@@ -198,49 +201,84 @@ class Interpolator:
         :param ptrnfile: result of the functions patternfiles
         :param step: pixel step, can be used to lower the number of pixels that are plotted 
         '''
+        currentdir = os.path.dirname(os.path.realpath(__file__))
         # the positions are constructed
-        vfxpos = np.vectorize(self.fxpos) #TODO: fxpos should be vectorized, now done twice
+        vfxpos = np.vectorize(self.fxpos) 
         vfypos = np.vectorize(self.fypos)
-        xcor = vfxpos(range(0,ptrn.shape[0], step), xstart)
-        ycor = vfypos(range(0,ptrn.shape[0], step), ystart)
-        # here the output of the array is defined
+
+        # NOTE: coordinates are created similarly to create coordinates
+        lanewidth = (self.fxpos(0)-self.fxpos(self.pixelsinline-1))*self.samplegridsize  # mm
+        lanes = math.ceil(self.samplexsize/lanewidth)
+        facets_inlane = math.ceil(self.rotationfrequency * self.facets * (self.sampleysize/self.stagespeed))
+        # single facet
+        vfxpos = np.vectorize(self.fxpos)
+        vfypos = np.vectorize(self.fypos)
+        xstart = self.fxpos(self.pixelsinline-1) #TODO: make sure you account for this in your movement
+        xpos_facet = vfxpos(range(0, self.pixelsinline), xstart)
+        ypos_forwardfacet = vfypos(range(0, self.pixelsinline), True)
+        ypos_backwardfacet = vfypos(range(0, self.pixelsinline), False)
+        # single lane
+        xpos_lane = xpos_facet.tolist() * facets_inlane
+        ypos_forwardlane = []
+        ypos_backwardlane = []
+        for facet in range(0, facets_inlane):
+            ypos_forwardtemp = ypos_forwardfacet + (facet*self.stagespeed)/(self.facets*self.rotationfrequency*self.samplegridsize)
+            ypos_backwardtemp = ypos_backwardfacet + ((facets_inlane-facet)*self.stagespeed)/(self.facets*self.rotationfrequency*self.samplegridsize)
+            ypos_forwardlane += ypos_forwardtemp.tolist()
+            ypos_backwardlane += ypos_backwardtemp.tolist()
+        # all lanes
+        xpos_lane = np.array(xpos_lane)
+        xpos = []
+        ypos = []
+        for lane in range(0, lanes):
+            xpos_temp = xpos_lane + lane * (self.fxpos(0)-self.fxpos(self.pixelsinline-1))
+            if lanes % 2 == 1:
+                ypos_temp = ypos_backwardlane
+            else:
+                ypos_temp = ypos_forwardlane
+            xpos += xpos_temp.tolist()
+            ypos += ypos_temp
+        #NOTE: end note
         # if this is not done, operation becomes too slow
-        xcor = xcor.astype(np.int32, copy=False)
-        ycor = ycor.astype(np.int32, copy=False)
-        #ycor=ycor+abs(ycor.min())
+        # conversion to int needed, as array indices must be integer
+        xcor = np.array(xpos[::step]).astype(np.int32, copy=False)
+        ycor = np.array(ypos[::step]).astype(np.int32, copy=False)
         # x and y cannot be negative
-        if xcor.min()<0:
-            xcor+=abs(xcor.min())
-        if ycor.min()<0:
-            ycor+=abs(ycor.min())
+        if xcor.min()< 0:
+            xcor += abs(xcor.min())
+        if ycor.min()< 0:
+            ycor += abs(ycor.min())
         # number of pixels ptrn.shape[0]
-        img = np.zeros((ycor.max()+1, xcor.max()+1),dtype=np.uint8)
-        img[ycor[:], xcor[:]]=ptrn[0:len(ptrn):step]
+        img = np.zeros((ycor.max() + 1, xcor.max() + 1), dtype=np.uint8)
+        img[ycor[:], xcor[:]] = ptrn[0 : len(ptrn): step]
         #img[:,113]=1 #the line is at 113
-        img = img*255
-        cv2.imwrite(os.path.join(self.patfolder,"plot.png"),img)
+        img = img * 255
+        cv2.imwrite(os.path.join(currentdir, "plot.png"), img)
         return img
 
-    def readbin(self, name):
+
+    def readbin(self, name='test.bin'):
         '''
-        reads a binary file, which can be
-        written to the SDRAM
+        reads a binary file
 
         :param name
         '''
-        pat=np.fromfile(os.path.join(self.patfolder,name), dtype=np.uint8)
+        currentdir = os.path.dirname(os.path.realpath(__file__))
+        pat=np.fromfile(os.path.join(currentdir, name), dtype=np.uint8)
         return pat
 
-    def writebin(self, pixeldata, filename):
+
+    def writebin(self, pixeldata, filename='test.bin'):
         '''
-        writes pixeldata to a binary file, which can
-        be opened with IntelHex and pushed to the SDRAM
+        writes pixeldata to a binary file
 
         :param pixeldata must have uneven length
         :param filename name of file
         '''
+        currentdir = os.path.dirname(os.path.realpath(__file__))
         pixeldata=pixeldata.astype(np.uint8)
-        pixeldata.tofile(os.path.join(self.patfolder, filename))
+        pixeldata.tofile(os.path.join(currentdir, filename))
+
 
 #TODO: the coordinates had a different type in the original --> np.int32
 # a line resutts from / or // in return
@@ -250,11 +288,8 @@ if __name__ == "__main__":
     dir_path = os.path.dirname(os.path.realpath(__file__))
     url = os.path.join(dir_path, 'test-patterns', 'line-resolution-test.ps')
     ptrn = interpolator.patternfile(url)
-    # diodes which are on
-    # lst=[i for i in range(ptrn0.shape[0]) if ptrn0[i,:].sum()>0]
-    # [i for i in range(ptrn1.shape[0]) if ptrn1[i,:].sum()>0]
-    # [x[0] for x in enumerate(lst) if x[1]==2]
-    interpolator.writebin(ptrn,"test.bin")
+    interpolator.writebin(ptrn, "test.bin")
     pat = interpolator.readbin("test.bin")
+    print("The shape of the pattern is {}".format(pat.shape))
     # testing the slices can only be done at 64 bit, VTK is however installed for 32 bit
-    #slic3r.plotptrn(pat, 0, 0, 1)
+    interpolator.plotptrn(pat, 1)
