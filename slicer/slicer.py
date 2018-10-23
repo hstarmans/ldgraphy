@@ -11,7 +11,7 @@ from scipy import ndimage
 from PIL import Image
 
 
-class slicer(object):
+class Interpolator:
     '''
     This object creates the slices for the Hexastorm.
 
@@ -24,7 +24,8 @@ class slicer(object):
 
     def __init__(self):
         # PARAMETERS
-        self.tiltangle = np.radians(90)   # angle [radians]
+        self.tiltangle = np.radians(90)   # angle [radians], for a definition see figure 7
+                                          # https://reprap.org/wiki/Transparent_Polygon_Scanning
         self.laserfrequency = 42720       # the laser frequency [Hz]
         self.rotationfrequency = 2400/60  # rotation frequency polygon [Hz]
         self.facets = 4                   # number of facets
@@ -54,7 +55,7 @@ class slicer(object):
 
         :param url: path to postcript file
         '''
-        psppoint = 0.3527777778 # 1 post script in mm
+        psppoint = 0.3527777778 # post script pixel in mm
         tmp = Image.open(url)
         x_size, y_size = [i*psppoint for i in tmp.size]
         if x_size > self.pltfxsize or y_size > self.pltfysize:
@@ -72,7 +73,8 @@ class slicer(object):
         '''
         returns the displacement for a given pixel
 
-        assumes the line starts at the positive plane
+        The x-axis is parallel to the scanline if the stage does not move.
+        It is assumed, the laser bundle traverses in the negative direction if the polygon rotates.
         :param pixel; the pixelnumber, in range [0, self.pixelsfacet]
         '''
         # interiorangle = 180-360/self.n
@@ -88,33 +90,36 @@ class slicer(object):
 
     def fxpos(self, pixel, xstart = 0):
         '''
-        returns the laserdiode x-position in pixels type int
+        returns the laserdiode x-position in pixels
+
+        The x-axis is parallel to the scanline if the stage does not move.
         :param pixel: the pixelnumber in the line
         :param xstart: the x-start position [mm], typically your xstart is larger than 0
                        as the displacement can be negative
         '''
         line_pixel = self.startpixel + pixel % self.pixelsinline
         xpos = np.sin(self.tiltangle)*self.displacement(line_pixel) + xstart
-        #NOTE: float leads to additional patterns in final slice
-        return xpos//self.samplegridsize
+        return xpos/self.samplegridsize
 
 
     def fypos(self, pixel, direction, ystart = 0):
         '''
-        returns the laserdiode y-position in pixels type int
+        returns the laserdiode y-position in pixels
+
+        The y-asis is orthogonal to the scanline if the stage does not move.
         :param pixel: the pixelnumber in the line
         :param direction: True is +, False is -
-        :param ystart: the y-start position in [mm]
+        :param ystart: the y-start position [mm]
         '''
         line_pixel = self.startpixel + pixel % self.pixelsinline
         if direction:
-            ypos = np.cos(self.tiltangle)*self.displacement(line_pixel)
+            ypos = -np.cos(self.tiltangle)*self.displacement(line_pixel)
             ypos += line_pixel/self.laserfrequency*self.stagespeed + ystart
         else:
-            ypos = np.cos(self.tiltangle)*self.displacement(line_pixel) 
+            ypos = -np.cos(self.tiltangle)*self.displacement(line_pixel) 
             ypos -= line_pixel/self.laserfrequency*self.stagespeed + ystart
-        #NOTE: float leads to additional patterns in the final slice
-        return ypos//self.samplegridsize
+        
+        return ypos/self.samplegridsize
 
 
     def createcoordinates(self):
@@ -128,7 +133,7 @@ class slicer(object):
         if self.fxpos(0) < 0 or self.fxpos(self.pixelsinline-1) > 0:
             raise Exception('Line seems ill positioned')
         lanewidth = (self.fxpos(0)-self.fxpos(self.pixelsinline-1))*self.samplegridsize  # mm
-        lanes = math.ceil(self.samplexsize/(lanewidth))
+        lanes = math.ceil(self.samplexsize/lanewidth)
         facets_inlane = math.ceil(self.rotationfrequency * self.facets * (self.sampleysize/self.stagespeed))
         # single facet
         vfxpos = np.vectorize(self.fxpos)
@@ -158,6 +163,7 @@ class slicer(object):
                 ypos_temp = ypos_forwardlane
             xpos += xpos_temp.tolist()
             ypos += ypos_temp
+        #NOTE: float leads to additional patterns in the final slice
         ids = np.concatenate(([np.array(xpos)], [np.array(ypos)]))
         return ids
 
@@ -170,19 +176,15 @@ class slicer(object):
         '''
         from time import time
         ctime = time()
-
-        
         layerarr = self.pstoarray(url)
-        print(layerarr.shape)
         print("Retrieved layerarr")
         print("elapsed {}".format(time()-ctime))
         ids = self.createcoordinates()
-        print(ids.shape)
         print("Retrieved coordinates")
         print("elapsed {}".format(time()-ctime))
         #TODO: test
         # values outside image are mapped to 0
-        ptrn = ndimage.map_coordinates(input=layerarr, output=np.uint8, coordinates=ids, order=1, mode="constant",cval=0)
+        ptrn = ndimage.map_coordinates(input=layerarr, output=np.uint8, coordinates=ids, order=1, mode="constant", cval=0)
         # max array is set to one
         print("Completed interpolation")
         print("elapsed {}".format(time()-ctime))
@@ -244,16 +246,15 @@ class slicer(object):
 # a line resutts from / or // in return
 
 if __name__ == "__main__":
-    slic3r=slicer()
+    interpolator = Interpolator()
     dir_path = os.path.dirname(os.path.realpath(__file__))
     url = os.path.join(dir_path, 'test-patterns', 'line-resolution-test.ps')
-    #NOTE: pstoarray, createcoordinates is handled by the function patternfile
-    ptrn = slic3r.patternfile(url)
+    ptrn = interpolator.patternfile(url)
     # diodes which are on
     # lst=[i for i in range(ptrn0.shape[0]) if ptrn0[i,:].sum()>0]
     # [i for i in range(ptrn1.shape[0]) if ptrn1[i,:].sum()>0]
     # [x[0] for x in enumerate(lst) if x[1]==2]
-    slic3r.writebin(ptrn,"test.bin")
-    pat = slic3r.readbin("test.bin")
+    interpolator.writebin(ptrn,"test.bin")
+    pat = interpolator.readbin("test.bin")
     # testing the slices can only be done at 64 bit, VTK is however installed for 32 bit
     #slic3r.plotptrn(pat, 0, 0, 1)

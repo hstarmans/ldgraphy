@@ -6,3 +6,4 @@
 *.o.d
 *-pru_bin.h
 ldgraphy
+.vscode
