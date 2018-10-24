@@ -13,7 +13,7 @@ from PIL import Image
 
 class Interpolator:
     '''
-    This object calculates the binanry laser diode information for the Hexastorm.
+    This object calculates the binary laser diode information for the Hexastorm.
 
     A post script file is converted to a numpy array. 
     The positions of the laserdiode are calculated via the function createcoordinates. The function patternfiles interpolates
