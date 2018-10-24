@@ -9,18 +9,16 @@ import os
 import numpy as np
 from scipy import ndimage
 from PIL import Image
-import cv2  # replace with PIL
 
 
 class Interpolator:
     '''
-    This object creates the slices for the Hexastorm.
+    This object calculates the binanry laser diode information for the Hexastorm.
 
-    A post script file is converted to an numpy array. 
+    A post script file is converted to a numpy array. 
     The positions of the laserdiode are calculated via the function createcoordinates. The function patternfiles interpolates
-    the array created. These values are either 0 (laser off) or 1 (laser on). The slicer object has functions to write binary files
-    which can be pushed to the PRU. The slicer can also read binary files and render them and
-    saves it as image.
+    the array created. These values are either 0 (laser off) or 1 (laser on). The slicer object has convenience functions 
+    to write and read the binary files which can be pushed to the PRU.
     '''
 
     def __init__(self):
@@ -193,13 +191,14 @@ class Interpolator:
         return ptrn
 
 
-    def plotptrn(self, ptrn, step):
+    def plotptrn(self, ptrn, step, filename = 'plot'):
         '''
         function can be used to plot a pattern file. The result is return as numpy array
-        and stored in the patfolder under the name "plot.png"
+        and stored in script folder under the name "plot.png"
 
         :param ptrnfile: result of the functions patternfiles
         :param step: pixel step, can be used to lower the number of pixels that are plotted 
+        :param filename: filename to store pattern
         '''
         currentdir = os.path.dirname(os.path.realpath(__file__))
         # the positions are constructed
@@ -249,11 +248,12 @@ class Interpolator:
         if ycor.min()< 0:
             ycor += abs(ycor.min())
         # number of pixels ptrn.shape[0]
-        img = np.zeros((ycor.max() + 1, xcor.max() + 1), dtype=np.uint8)
-        img[ycor[:], xcor[:]] = ptrn[0 : len(ptrn): step]
+        arr = np.zeros((ycor.max() + 1, xcor.max() + 1), dtype=np.uint8)
+        arr[ycor[:], xcor[:]] = ptrn[0 : len(ptrn): step]
         #img[:,113]=1 #the line is at 113
-        img = img * 255
-        cv2.imwrite(os.path.join(currentdir, "plot.png"), img)
+        arr = arr * 255
+        img = Image.fromarray(arr)
+        img.save(filename + '.png')
         return img
 
 
