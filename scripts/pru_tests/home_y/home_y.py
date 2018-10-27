@@ -9,9 +9,9 @@ import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
 STEPS_PER_MM = 76.2
-STEPSPEED = 60  # Hz
-STEPS = 60 * 100
-DIRECTION = True  # false is up, true is to home
+STEPSPEED = round(4*XSTEP_PER_MM)
+STEPS = round(200*XSTEP_PER_MM)
+DIRECTION = True  # true is to home
 
 y_direction_output = "P9_20"
 GPIO.setup(y_direction_output, GPIO.OUT)
@@ -34,7 +34,6 @@ class Params( ctypes.Structure ):
     _fields_ = [
             ("steps", ctypes.c_uint32),  
             ("halfperiodstep",    ctypes.c_uint32),
-            ("gpio_1_read", ctypes.c_uint32),
 ]
 
 pruss = Icss('/dev/uio/pruss/module')
@@ -48,7 +47,10 @@ print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
 GPIO.output(y_enable, GPIO.HIGH)
-print(pruss.core0.r2)
+if pruss.core0.r2:
+    print("Homing failed, did not touch switch")
+else:
+    print("Homing successfull")
 
 
 

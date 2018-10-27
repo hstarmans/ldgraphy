@@ -9,9 +9,9 @@ import Adafruit_BBIO.GPIO as GPIO
 # INPUT
 XSTEPSPERMM = 76.2
 MICROSTEPPING = 1
-STEPSPEED = 160  # Hz
-STEPS = round(100 * XSTEPSPERMM)
-DIRECTION = True  # False is in the homing direction
+STEPSPEED = round(3*XSTEPSPERMM) 
+STEPS = round(10 * XSTEPSPERMM)
+DIRECTION = False  # False is in the homing direction
 
 
 x_direction_output = "P9_12"

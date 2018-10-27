@@ -46,7 +46,8 @@
 				pinctrl-single,pins = <
 					0x1ac 0x05  /* P9_25 Polygon Enable */
 					0x1a4 0x05  /* P9_27 Polygon PWM    */
-                                        0x194 0x05  /* P9_29 Laserdiode     */
+                                        0x194 0x05  /* P9_29 Laserdiode PWM1*/
+					0x190 0x05  /* P9_31 Laserdiode PWM2*/
 				        0x1a8 0x26  /* P9_41 Photodiode     */
                                         0x178 0x07  /* P9_20 Y-dir          */
                                         0x078 0x07  /* P9_12 X-dir          */
