@@ -209,6 +209,9 @@ class Interpolator:
         :param step: pixel step, can be used to lower the number of pixels that are plotted 
         :param filename: filename to store pattern
         '''
+        #TODO: - plot with real pixels
+        #      - your y step is greater than sample size so you see lines, this will not be there in
+        #        reality as you spot is larger
         ids = self.createcoordinates()
         xcor = np.array(ids[1, ::step]).astype(np.int32)
         ycor = np.array(ids[0, ::step]).astype(np.int32)
