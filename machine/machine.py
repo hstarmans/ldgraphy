@@ -48,7 +48,7 @@ class Machine:
         '''
         get current laser power
         '''
-        return abs(self.digipot.readS8(0))
+        return abs(self.digipot.readU8(0))
 
 
     def loadconstants(self):
@@ -174,15 +174,15 @@ class Machine:
         if displacement[0]:
             direction = GPIO.HIGH if displacement[0] > 0 else GPIO.LOW
             GPIO.output(self.pins['x_dir'], direction)
-            self.write_params(displacement[0], speed)
+            self.write_params(abs(displacement[0]), speed)
             self.pruss.core0.load(join(self.bin_folder, 'move_x.bin'))
             self.runcore0('x')
 
 
         if displacement[1]:
-            direction = GPIO.HIGH if displacement[0] > 0 else GPIO.LOW
+            direction = GPIO.HIGH if displacement[1] > 0 else GPIO.LOW
             GPIO.output(self.pins['y_dir'], direction)
-            self.write_params(displacement[1], speed)
+            self.write_params(abs(displacement[1]), speed)
             self.pruss.core0.load(join(self.bin_folder, 'move_y.bin'))
             self.runcore0('y')
 
