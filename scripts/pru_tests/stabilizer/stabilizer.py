@@ -43,22 +43,22 @@ LINE = data_byte*SCANLINE_DATA_SIZE
 #TOTAL_LINES = RPM*DURATION/60*FACETS
 
 # Steps
-XSTEPSPERMM = 76.2
+STEPSPERMM = 76.2
 MICROSTEPPING = 1
-TOTAL_LINES = round(100*XSTEPSPERMM)
+TOTAL_LINES = round(10*STEPSPERMM)
 DIRECTION = False # False is in the homing direction
 
-x_direction_output = "P9_12"
-GPIO.setup(x_direction_output, GPIO.OUT)
+y_direction_output = "P9_12"
+GPIO.setup(y_direction_output, GPIO.OUT)
 if DIRECTION:
-    GPIO.output(x_direction_output, GPIO.HIGH)
+    GPIO.output(y_direction_output, GPIO.HIGH)
 else:
-    GPIO.output(x_direction_output, GPIO.LOW)
+    GPIO.output(y_direction_output, GPIO.LOW)
 
 
-x_enable_output = "P9_15"
-GPIO.setup(x_enable_output, GPIO.OUT)
-GPIO.output(x_enable_output, GPIO.LOW) # motor on
+y_enable_output = "P9_15"
+GPIO.setup(y_enable_output, GPIO.OUT)
+GPIO.output(y_enable_output, GPIO.HIGH) # motor disabled
 
 
 if TOTAL_LINES <= QUEUE_LEN:
@@ -129,4 +129,4 @@ except IndexError:
 
 sync_fails = pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
 print("There have been {} sync fails".format(sync_fails))
-GPIO.output(x_enable_output, GPIO.HIGH)  # disable motors
+GPIO.output(y_enable_output, GPIO.HIGH)  # disable motors
