@@ -8,10 +8,11 @@ The position of the laser is determined and a stable line should be projected.
 The result of this test is measured with a camera with a neutral density filter
 and without a lens.
 """
+from ctypes import c_uint32
+
 from pyuio.ti.icss import Icss
 from pyuio.uio import Uio
 from bidict import bidict
-from ctypes import c_uint32
 import Adafruit_BBIO.GPIO as GPIO
 
 IRQ = 2                  # range 2 .. 9
@@ -26,7 +27,7 @@ ERRORS += ['ERROR_TIME_OVERRUN']
 ERRORS = bidict(enumerate(ERRORS))
 RPM = 2400
 FACETS = 4
-SCANLINE_DATA_SIZE = 512
+SCANLINE_DATA_SIZE = 187
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
 QUEUE_LEN = 8

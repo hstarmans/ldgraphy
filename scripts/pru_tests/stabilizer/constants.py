@@ -1,5 +1,5 @@
 # variables
-TICK_DELAY = 75
+TICK_DELAY = 500   # highest tested is 75 @zeller
 RPM = 2400
 UP_SCAN = 0.8
 LOW_SCAN = 0.2
