@@ -40,7 +40,7 @@ class Interpolator:
         self.stagespeed = 4.8             # mm/s
         self.startpixel = 10*8            # pixel determine via camera
         self.pixelsinline = 230*8         # number of pixels in a line
-        # debug folder
+        
         currentdir = os.path.dirname(os.path.realpath(__file__))
         self.debug_folder = os.path.join(currentdir, 'debug')
 

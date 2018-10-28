@@ -9,6 +9,7 @@ from ctypes import c_uint32, Structure
 from pyuio.ti.icss import Icss
 from pyuio.uio import Uio
 import Adafruit_BBIO.GPIO as GPIO
+import Adafruit_GPIO.I2C as I2C
 import numpy as np
 from bidict import bidict
 
@@ -17,8 +18,33 @@ class Machine:
     def __init__(self):
         self.position = [0,0]
         self.steps_per_mm = 76.2
+        
+        currentdir = os.path.dirname(os.path.realpath(__file__))
+        self.bin_folder = os.path.join(currentdir, 'binaries')
+        
         self.setuppins()
         self.setuppru()
+
+        self.digipot = I2C.get_i2c_device(0x28)
+
+
+    #TODO: do via getter / setter?
+    def set_laser_power(self, value)
+        '''
+        sets laser power to given value
+
+        :param value: laser power
+        '''
+        if value < 0 or value > 255:
+            raise Exception('Invalid laser power')
+        self.digipot.write8(0, value)
+    
+
+    def get_laser_power(self):
+        '''
+        get current laser power
+        '''
+        return abs(self.digipot.readS8(0))
 
 
     def loadconstants(self):
@@ -102,10 +128,10 @@ class Machine:
         '''
         if direction == 'x':
             GPIO.output(self.pins['x_dir'], GPIO.LOW)
-            self.pruss.core0.load('home_x.bin')
+            self.pruss.core0.load(os.path.join(self.bin_folder, 'home_x.bin')
         else:
             GPIO.output(self.pins['y_dir'], GPIO.HIGH)
-            self.pruss.core0.load('home_y.bin')
+            self.pruss.core0.load(os.path.join(self.bin_folder, 'home_y.bin')
         
         self.write_params(200, speed)
         self.runcore0(direction)
@@ -142,7 +168,7 @@ class Machine:
             direction = GPIO.HIGH if displacement[0] > 0 else GPIO.LOW
             GPIO.output(self.pins['x_dir'], direction)
             self.write_params(displacement[0], speed)
-            self.pruss.core0.load('move_x.bin')
+            self.pruss.core0.load(os.path.join(self.bin_folder, 'move_x.bin'))
             self.runcore0('x')
 
 
@@ -150,7 +176,7 @@ class Machine:
             direction = GPIO.LOW if displacement[0] > 0 else GPIO.HIGH
             GPIO.output(self.pins['y_dir'], direction)
             self.write_params(displacement[1], speed)
-            self.pruss.core0.load('move_y.bin')
+            self.pruss.core0.load(os.path.join(self.bin_folder, 'move_y.bin'))
             self.runcore0('y')
 
 
@@ -165,7 +191,7 @@ class Machine:
         self.pruss.intc.ev_ch[PRU0_ARM_INTERRUPT] = self.IRQ
         self.pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
         self.pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
-        self.pruss.core0.load('./stabilizer.bin')
+        self.pruss.core0.load(os.path.join(self.bin_folder, './stabilizer.bin'))
         self.pruss.core0.dram.write([0]*self.pixelsinline*8+[0]*5)
         self.pruss.core0.run()
 
@@ -211,43 +237,50 @@ class Machine:
         return error_index
 
     
-    def expose(self, line_data, multiplier = 1):
+    def expose(self, line_data, direction, multiplier = 1):
         '''
-        expose given line_data to substrate
+        expose given line_data to substrate in given direction
+        each line is exposed multiplier times.
 
         :param line_data; data to write to scanner, 1D binary numpy array
         :param multiplier; amount of times a line is exposed
+        :param direction; direction of exposure, True is postive y (away from home)
         '''
         # constants needed from  laser-scribe-constants.h
-        line_data = 255 * line_data   # in effect we divide our laserfrequency by 8
         QUEUE_LEN = 8
         if len(line_data) < QUEUE_LEN * self.pixelsinline or len(line_data) % self.pixelsinline:
-            raise Exception('Data send to scanner seems invalid.')
-        # you start by writing 8 lines
+            raise Exception('Data send to scanner seems invalid, sanity check 1.')
+        if line_data.max() < 2 or line_data.min() < 0 or line_data.max() > 255:
+            raise Exception('Data send to scanner seems invalid, sanity check 2')
+        GPIO.output(self.pins['y_enable'], GPIO.LOW) # motor on
+        if direction:
+            GPIO.output(self.pins['y_dir'], GPIO.LOW)
+        else:
+            GPIO.output(self.pins['y_dir'], GPIO.HIGH)
+        # prep scanner by writing 8 lines to buffer
         write_data = [self.ERRORS.inv['ERROR_NONE']] + [0]*4
         counter = 0
         line = 0
-        GPIO.output(self.pins['x_dir'], GPIO.LOW) # motor on
-
         while counter < QUEUE_LEN:
             extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA']]
             extra_data += list(line_data[line*self.pixelsinline:(line+1)*self.pixelsinline])
             if multiplier > 1:
                 null_data = deepcopy(extra_data)
                 null_data[0] = self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
-                if counter+multiplier < QUEUE_LEN:
+                if counter+(multiplier-1) < QUEUE_LEN:
                     extra_data += null_data*(multiplier-1)
                 else:
                     extra_data += null_data*(QUEUE_LEN-counter)
             write_data += extra_data
             counter += multiplier
             line += 1
-            if len(write_data) == 8*(1 + self.pixelsinline):
+            if len(write_data) == 5 + QUEUE_LEN*(1 + self.pixelsinline):
                 self.pruss.core0.dram.write(write_data)
             else:
                 raise Exception('Preparation data incorrect')
         
         def receive_command(byte):
+            #TODO: add timeout
             command_index = self.receive_command(byte)
             if self.COMMANDS[command_index] != 'CMD_EMPTY':
                 raise Exception('Line not empty')        
@@ -255,7 +288,7 @@ class Machine:
 
         SCANLINE_DATA_SIZE = 1 + self.pixelsinline
         byte = START_RINGBUFFER = 5
-        for line in range(QUEUE_LEN, len(line_data)):
+        for line in range(line, len(line_data)):
             receive_command(byte)
             extra_data = list(line_data[line*self.pixelsinline:(line+1)*self.pixelsinline])
             write_data = [self.COMMANDS.inv['CMD_SCAN_DATA']] + extra_data
@@ -272,10 +305,11 @@ class Machine:
                     byte = START_RINGBUFFER
         
         SYNC_FAIL_POS = 1
+        #TODO: you expect sync fails, you are failing the sync
         sync_fails = self.pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
         if sync_fails:
             print("There have been {} sync fails".format(sync_fails))  #TODO: write to log
-        GPIO.output(self.pins['x_dir'], GPIO.HIGH) # motor off
+        GPIO.output(self.pins['y_enable'], GPIO.HIGH) # motor off
 
 
             

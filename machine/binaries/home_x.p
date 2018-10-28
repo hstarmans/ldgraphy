@@ -24,12 +24,12 @@ START:
     LBCO  &params, c24, 0, SIZE(params)
     ; r0 reserved for halfperiod
     MOV r1, params.steps
-    MOV r2, 0  ; no success
+    MOV r2, 1  ; no success
     MOV r3, GPIO_1_BASE | GPIO_DATAIN
 STEPLOOP:
     LBBO r4, r3, 0, 4
     QBBC bit_is_clear, r4, XPO
-    MOV r2, 1 ; success
+    MOV r2, 0 ; success
     JMP FINISH
 bit_is_clear:
     SET r30.t3 ; X-STEP pulse
