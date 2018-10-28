@@ -7,21 +7,19 @@ import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
-XSTEPSPERMM = 76.2
-MICROSTEPPING = 1
-STEPSPEED = round(3*XSTEPSPERMM) 
-STEPS = round(10 * XSTEPSPERMM)
-DIRECTION = False  # False is in the homing direction
+XSTEPSPERMM = 76.2 
+STEPSPEED = round(1*XSTEPSPERMM)
+STEPS =  round(10*XSTEPSPERMM) 
+DIRECTION = True   # false is in direction home
 
-
-x_direction_output = "P9_12"
+x_direction_output = "P9_20"
 GPIO.setup(x_direction_output, GPIO.OUT)
 if DIRECTION:
     GPIO.output(x_direction_output, GPIO.HIGH)
 else:
     GPIO.output(x_direction_output, GPIO.LOW)
 
-x_enable_output = "P9_15"
+x_enable_output = "P9_19"
 GPIO.setup(x_enable_output, GPIO.OUT)
 GPIO.output(x_enable_output, GPIO.LOW)
 
@@ -47,4 +45,4 @@ pruss.core0.run()
 print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
-GPIO.output(x_enable_output, GPIO.HIGH)  # disable motors
+GPIO.output(x_enable_output, GPIO.HIGH)

@@ -5,6 +5,8 @@
 from copy import deepcopy
 from time import sleep
 from ctypes import c_uint32, Structure
+from os.path import join, dirname, realpath
+
 
 from pyuio.ti.icss import Icss
 from pyuio.uio import Uio
@@ -14,13 +16,15 @@ import numpy as np
 from bidict import bidict
 
 
+
 class Machine:
     def __init__(self):
-        self.position = [0,0]
+        self.position = [0, 0]
         self.steps_per_mm = 76.2
+        self.pixelsinline = 230
         
-        currentdir = os.path.dirname(os.path.realpath(__file__))
-        self.bin_folder = os.path.join(currentdir, 'binaries')
+        currentdir = dirname(realpath(__file__))
+        self.bin_folder = join(currentdir, 'binaries')
         
         self.setuppins()
         self.setuppru()
@@ -29,7 +33,7 @@ class Machine:
 
 
     #TODO: do via getter / setter?
-    def set_laser_power(self, value)
+    def set_laser_power(self, value):
         '''
         sets laser power to given value
 
@@ -67,20 +71,19 @@ class Machine:
         self.pruss = Icss('/dev/uio/pruss/module')
         self.irq = Uio("/dev/uio/pruss/irq%d" % self.IRQ )
         self.pruss.initialize()
-        self.pixelsinline = 230  #TODO: shared with interpolator
 
 
     def setuppins(self):
         '''
         creates dictionary for motor pins and disables motors
         '''
-        self.pins = {'x_dir': "P9_12",
-                     'x_enable' : "P9_15",
-                     'y_dir': "P9_20",
-                     'y_enable': "P9_19"}
+        self.pins = {'y_dir': "P9_12",
+                     'y_enable' : "P9_15",
+                     'x_dir': "P9_20",
+                     'x_enable': "P9_19"}
 
         for key, value in self.pins.items():
-            GPIO.setup(key, GPIO.OUT)
+            GPIO.setup(value, GPIO.OUT)
         # disable motors
         GPIO.output(self.pins['x_dir'], GPIO.HIGH)
         GPIO.output(self.pins['y_dir'], GPIO.HIGH)
@@ -101,10 +104,12 @@ class Machine:
                     ("halfperiodstep", c_uint32) # speed
         ]
         params0 = self.pruss.core0.dram.map(Params)
-        params0.steps = round(distance * self.steps_per_mm)
+        # round(np.float64(3.0)) -> 3.0, round(3.0) -> 3
+        params0.steps = int(round(distance * self.steps_per_mm))
         CPU_SPEED = 200E6
         INST_PER_LOOP = 2
-        params0.halfperiodstep = round(CPU_SPEED/(2*speed*INST_PER_LOOP))
+        params0.halfperiodstep = int(round(CPU_SPEED
+            /(2*speed*self.steps_per_mm*INST_PER_LOOP)))
 
 
     def runcore0(self, direction):
@@ -119,7 +124,7 @@ class Machine:
         GPIO.output(enablepin, GPIO.HIGH)
 
 
-    def home(self, direction='x', speed = '2'):
+    def home(self, direction='x', speed = 2):
         '''
         homes axis in direction at given speed
 
@@ -128,10 +133,12 @@ class Machine:
         '''
         if direction == 'x':
             GPIO.output(self.pins['x_dir'], GPIO.LOW)
-            self.pruss.core0.load(os.path.join(self.bin_folder, 'home_x.bin')
+            self.pruss.core0.load(join(self.bin_folder,
+                'home_x.bin'))
         else:
-            GPIO.output(self.pins['y_dir'], GPIO.HIGH)
-            self.pruss.core0.load(os.path.join(self.bin_folder, 'home_y.bin')
+            GPIO.output(self.pins['y_dir'], GPIO.LOW)
+            self.pruss.core0.load(join(self.bin_folder,
+                'home_y.bin'))
         
         self.write_params(200, speed)
         self.runcore0(direction)
@@ -150,7 +157,7 @@ class Machine:
                 self.position[1] = 0
     
 
-    def move(self, target_position, speed = '2'):
+    def move(self, target_position, speed = 2):
         '''
         moves axis into position at given speed
 
@@ -168,15 +175,15 @@ class Machine:
             direction = GPIO.HIGH if displacement[0] > 0 else GPIO.LOW
             GPIO.output(self.pins['x_dir'], direction)
             self.write_params(displacement[0], speed)
-            self.pruss.core0.load(os.path.join(self.bin_folder, 'move_x.bin'))
+            self.pruss.core0.load(join(self.bin_folder, 'move_x.bin'))
             self.runcore0('x')
 
 
         if displacement[1]:
-            direction = GPIO.LOW if displacement[0] > 0 else GPIO.HIGH
+            direction = GPIO.HIGH if displacement[0] > 0 else GPIO.LOW
             GPIO.output(self.pins['y_dir'], direction)
             self.write_params(displacement[1], speed)
-            self.pruss.core0.load(os.path.join(self.bin_folder, 'move_y.bin'))
+            self.pruss.core0.load(join(self.bin_folder, 'move_y.bin'))
             self.runcore0('y')
 
 
@@ -191,7 +198,7 @@ class Machine:
         self.pruss.intc.ev_ch[PRU0_ARM_INTERRUPT] = self.IRQ
         self.pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
         self.pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
-        self.pruss.core0.load(os.path.join(self.bin_folder, './stabilizer.bin'))
+        self.pruss.core0.load(join(self.bin_folder, './stabilizer.bin'))
         self.pruss.core0.dram.write([0]*self.pixelsinline*8+[0]*5)
         self.pruss.core0.run()
 
@@ -254,9 +261,9 @@ class Machine:
             raise Exception('Data send to scanner seems invalid, sanity check 2')
         GPIO.output(self.pins['y_enable'], GPIO.LOW) # motor on
         if direction:
-            GPIO.output(self.pins['y_dir'], GPIO.LOW)
-        else:
             GPIO.output(self.pins['y_dir'], GPIO.HIGH)
+        else:
+            GPIO.output(self.pins['y_dir'], GPIO.LOW)
         # prep scanner by writing 8 lines to buffer
         write_data = [self.ERRORS.inv['ERROR_NONE']] + [0]*4
         counter = 0

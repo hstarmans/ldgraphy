@@ -8,3 +8,4 @@
 ldgraphy
 .vscode
 *.png
+*pycache*

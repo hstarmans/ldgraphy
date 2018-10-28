@@ -22,13 +22,13 @@ START:
     LBCO  &params, c24, 0, SIZE(params)
     MOV r1, params.steps
 STEPLOOP:
-    SET r30.t2 ; Y-STEP pulse
+    SET r30.t3 ; Y-STEP pulse
     MOV r0, params.halfperiodstep
 DELAYON:
     SUB r0, r0, 1
     QBNE DELAYON, r0, 0
 
-    CLR r30.t2   ; Y-STEP pulse
+    CLR r30.t3   ; Y-STEP pulse
     MOV r0, params.halfperiodstep
 DELAYOFF:
     SUB r0, r0, 1
