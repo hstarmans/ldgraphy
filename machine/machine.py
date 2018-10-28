@@ -112,10 +112,15 @@ class Machine:
         
         if self.pruss.core0.r2:
             raise Exception('Homing failed')
-        else:  # update current position
+        else: 
+        # update current position, move so homing switch is disabled
             if direction == 'x':
                 self.position[0] = 0
+                self.move([40, self.position[1]], 4)
+                self.position[0] = 0
             else:
+                self.position[1] = 0
+                self.move([self.position[0], 10], 4)
                 self.position[1] = 0
     
 

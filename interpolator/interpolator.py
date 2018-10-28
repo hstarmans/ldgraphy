@@ -135,9 +135,9 @@ class Interpolator:
         # single facet
         vfxpos = np.vectorize(self.fxpos)
         vfypos = np.vectorize(self.fypos)
-        xstart = self.fxpos(self.pixelsinline-1)*self.samplegridsize
-        # TODO: you still don't account for ystart
+        xstart = abs(self.fxpos(self.pixelsinline-1)*self.samplegridsize)
         xpos_facet = vfxpos(range(0, self.pixelsinline), xstart)
+        # TODO: you still don't account for ystart
         ypos_forwardfacet = vfypos(range(0, self.pixelsinline), True)
         ypos_backwardfacet = vfypos(range(0, self.pixelsinline), False)
         # single lane
@@ -196,14 +196,16 @@ class Interpolator:
             coordinates=ids, order=1, mode="constant", cval=0)
         print("Completed interpolation")
         print("elapsed {}".format(time()-ctime))
-        print("Final shape {}".format(ptrn.shape))
+        if ptrn.min()<0 or ptrn.max()>1:
+            raise Exception('This is not a bit list.')
+        ptrn = np.packbits(ptrn)
         return ptrn
 
 
     def plotptrn(self, ptrn, step, filename = 'plot'):
         '''
-        function can be used to plot a pattern file. The result is return as numpy array
-        and stored in script folder under the name "plot.png"
+        function can be used to plot a pattern file. Result is returned as numpy array
+        and stored in script folder under filename.
 
         :param ptrnfile: result of the functions patternfiles
         :param step: pixel step, can be used to lower the number of pixels that are plotted 
@@ -217,11 +219,13 @@ class Interpolator:
         ycor = np.array(ids[0, ::step]).astype(np.int32)
         # x and y cannot be negative
         if xcor.min()< 0:
+            print('XCOR negative, weird!')
             xcor += abs(xcor.min())
         if ycor.min()< 0:
+            print('YCOR negative, weird!')
             ycor += abs(ycor.min())
-        # number of pixels ptrn.shape[0]
         arr = np.zeros((ycor.max() + 1, xcor.max() + 1), dtype=np.uint8)
+        ptrn = np.unpackbits(ptrn)
         arr[ycor[:], xcor[:]] = ptrn[0 : len(ptrn): step]
         arr = arr * 255
         img = Image.fromarray(arr)
