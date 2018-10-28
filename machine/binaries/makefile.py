@@ -10,13 +10,13 @@ COMPILER = 'pasm'
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--make', action='store_true', help='compiles *.p to *.bin with pasm')
-    parser.add_argument('--clean', action='store_true', help'removes binaries')
+    parser.add_argument('--clean', action='store_true', help='removes binaries')
     return parser.parse_args()
 
 
 def make():
-    for file in glob.glob("*.bin"):
-        os.system(f'{COMPILER} -b {file}')
+    for file in glob.glob("*.p"):
+        os.system(COMPILER + ' -b ' + file)
 
 
 def clean():
