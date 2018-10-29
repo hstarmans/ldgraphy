@@ -27,7 +27,7 @@ ERRORS += ['ERROR_TIME_OVERRUN']
 ERRORS = bidict(enumerate(ERRORS))
 RPM = 2400
 FACETS = 4
-SCANLINE_DATA_SIZE = 187
+SCANLINE_DATA_SIZE = 171
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
 QUEUE_LEN = 8
@@ -37,15 +37,15 @@ START_RINGBUFFER = 5
 # end of laser_scribe-constants.h
 
 # line
-data_byte = [int('10000000', 2)]  # left bit, bit 7 read out first
+data_byte = [int('11111111', 2)]  # left bit, bit 7 read out first
 LINE = data_byte*SCANLINE_DATA_SIZE
-#DURATION = 10  # seconds
-#TOTAL_LINES = RPM*DURATION/60*FACETS
+DURATION = 100  # seconds
+TOTAL_LINES = RPM*DURATION/60*FACETS
 
 # Steps
 STEPSPERMM = 76.2
 MICROSTEPPING = 1
-TOTAL_LINES = round(10*STEPSPERMM)
+#TOTAL_LINES = round(10*STEPSPERMM)
 DIRECTION = False # False is in the homing direction
 
 y_direction_output = "P9_12"

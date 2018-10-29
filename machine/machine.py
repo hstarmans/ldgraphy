@@ -216,21 +216,21 @@ class Machine:
         return command_index
 
 
-    def disable_scanhead(self):
+    def disable_scanhead(self, byte=5):
         '''
         disables scanhead
 
         function sleeps to offset is START_RINGBUFFER
         '''
         data = [self.COMMANDS.inv['CMD_EXIT']]
-        START_RINGBUFFER = 5
-        self.pruss.core0.dram.write(data, offset = START_RINGBUFFER)
-        command_index = self.receive_command(START_RINGBUFFER)
+        self.pruss.core0.dram.write(data, offset = byte)
+        #TODO: no longer works as you removed trigger! add again
+        #command_index = self.receive_command(START_RINGBUFFER)
         while not self.pruss.core0.halted:
             pass
-        if self.COMMANDS[command_index] != 'CMD_DONE':
-            print("Unexpected command received; {}".format(
-                self.COMMANDS[command_index]))
+        #if self.COMMANDS[command_index] != 'CMD_DONE':
+        #    print("Unexpected command received; {}".format(
+        #        self.COMMANDS[command_index]))
         
     
     def error_received(self):
@@ -309,7 +309,6 @@ class Machine:
         def receive_command(byte):
             #TODO: add timeout
             command_index = self.receive_command(byte)
-            print(command_index)
             if self.COMMANDS[command_index] != 'CMD_EMPTY':
                 print("Received {}".format(self.COMMANDS[command_index]))
                 raise Exception('Line not empty')        
@@ -320,18 +319,14 @@ class Machine:
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         byte = START_RINGBUFFER = 5
         self.pruss.core0.run()
-        for line in range(line, len(line_data)):
-            print("BYTE EQUALS {}".format(byte))
+        for line in range(line, len(line_data)//self.pixelsinline):
             receive_command(byte)
             extra_data = list(line_data[line*self.pixelsinline
                 :(line+1)*self.pixelsinline])
             write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA']] 
             + extra_data)
-            print("DATA WRITTEN LENGTH {}".format(len(write_data)))
             self.pruss.core0.dram.write(write_data, offset = byte)
-            print(byte)
             byte += SCANLINE_ITEM_SIZE
-            print(byte)
             if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                 byte = START_RINGBUFFER
             for counter in range(1, multiplier):
@@ -343,7 +338,7 @@ class Machine:
                 if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                     byte = START_RINGBUFFER
 
-        self.disable_scanhead()
+        self.disable_scanhead(byte)
         
         SYNC_FAIL_POS = 1
         #NOTE: is sync fail properly tested?
