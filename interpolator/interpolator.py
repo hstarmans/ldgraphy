@@ -132,6 +132,10 @@ class Interpolator:
         lanewidth = (self.fxpos(0)-self.fxpos(self.pixelsinline-1))*self.samplegridsize  # mm
         lanes = math.ceil(self.samplexsize/lanewidth)
         facets_inlane = math.ceil(self.rotationfrequency * self.facets * (self.sampleysize/self.stagespeed))
+        print("The lanewidth is {}".format(lanewidth))
+        print("The facets in lane are {}".format(facets_inlane))
+        
+        
         # single facet
         vfxpos = np.vectorize(self.fxpos)
         vfypos = np.vectorize(self.fypos)
