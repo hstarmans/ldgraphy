@@ -25,7 +25,7 @@ class Interpolator:
         # PARAMETERS
         self.tiltangle = np.radians(90)   # angle [radians], for a definition see figure 7
                                           # https://reprap.org/wiki/Transparent_Polygon_Scanning
-        self.laserfrequency = 42720*8       # the laser frequency [Hz]
+        self.laserfrequency = 400e3       # the laser frequency [Hz]
         self.rotationfrequency = 2400/60  # rotation frequency polygon [Hz]
         self.facets = 4                   # number of facets
         self.inradius = 15                # inradius polygon [mm]
@@ -37,9 +37,9 @@ class Interpolator:
         # NOTE: sample below Nyquist criterion
         #       you first sample the image, you then again sample the sampled image 
         self.samplegridsize = 0.015       # height/width of the sample gridth [mm]
-        self.stagespeed = 4.8             # mm/s
-        self.startpixel = 10*8            # pixel determine via camera
-        self.pixelsinline = 230*8         # number of pixels in a line
+        self.stagespeed = 2.0997375328             # mm/s
+        self.startpixel = 800             # pixel determine via camera
+        self.pixelsinline = 171*8         # number of pixels in a line
         
         currentdir = os.path.dirname(os.path.realpath(__file__))
         self.debug_folder = os.path.join(currentdir, 'debug')

@@ -21,7 +21,7 @@ class Machine:
     def __init__(self):
         self.position = [0, 0]
         self.steps_per_mm = 76.2
-        self.pixelsinline = 187
+        self.pixelsinline = 171
         
         currentdir = dirname(realpath(__file__))
         self.bin_folder = join(currentdir, 'binaries')
