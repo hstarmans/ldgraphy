@@ -276,6 +276,7 @@ class Machine:
             GPIO.output(self.pins['y_enable'], GPIO.LOW)
         else:
             GPIO.output(self.pins['y_enable'], GPIO.HIGH)
+        
         if direction:
             GPIO.output(self.pins['y_dir'], GPIO.HIGH)
         else:
