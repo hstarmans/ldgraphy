@@ -143,7 +143,7 @@ class Machine:
             self.pruss.core0.load(join(self.bin_folder,
                 'home_y.bin'))
         
-        self.write_params(200, speed)
+        self.write_params(300, speed)
         self.runcore0(direction)
         
         if self.pruss.core0.r2:
@@ -289,15 +289,16 @@ class Machine:
             extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA']]
             extra_data += list(line_data[line*self.pixelsinline:
                 (line+1)*self.pixelsinline])
+            counter += 1
             if multiplier > 1:
                 null_data = deepcopy(extra_data)
-                null_data[0] = self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
+                #null_data[0] = self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
                 if counter+(multiplier-1) < QUEUE_LEN:
                     extra_data += null_data*(multiplier-1)
                 else:
                     extra_data += null_data*(QUEUE_LEN-counter)
             write_data += extra_data
-            counter += multiplier
+            counter += multiplier-1
             line += 1
 
         if len(write_data) == 5 + QUEUE_LEN*(1 + self.pixelsinline):
@@ -320,6 +321,17 @@ class Machine:
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         byte = START_RINGBUFFER = 5
         self.pruss.core0.run()
+        # clean up the rest which remains
+        for counter in range(QUEUE_LEN, line-1+multiplier):
+            receive_command(byte)
+            extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
+            extra_data += list(line_data[(line-1)*self.pixelsinline:
+                (line)*self.pixelsinline])
+            self.pruss.core0.dram.write(extra_data, offset = byte)
+            byte += SCANLINE_ITEM_SIZE
+            if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
+                byte = START_RINGBUFFER
+
         for line in range(line, len(line_data)//self.pixelsinline):
             receive_command(byte)
             extra_data = list(line_data[line*self.pixelsinline
@@ -334,7 +346,7 @@ class Machine:
                 receive_command(byte)
                 write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
                     ] + extra_data)
-                self.pruss.core0.dram.write(write_data)
+                self.pruss.core0.dram.write(write_data, offset = byte)
                 byte += SCANLINE_ITEM_SIZE
                 if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                     byte = START_RINGBUFFER

@@ -6,7 +6,7 @@ FILENAME = 'test.bin'
 FACETS_IN_LANE = 5377
 LANEWIDTH = 9.33999
 PIXELS_IN_LINE = 171
-MULTIPLIER = 1
+MULTIPLIER = 10
 
 prototype = Machine()
 print("Homing x")
