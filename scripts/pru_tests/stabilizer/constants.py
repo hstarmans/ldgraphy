@@ -6,6 +6,7 @@ LOW_SCAN = 0.2
 
 
 # calculate
+STEPSPERMM = 76.2
 CPU_SPEED = 200E6
 FACETS = 4
 TICKS_PER_MIRROR_SEGMENT = round(CPU_SPEED//(TICK_DELAY*(RPM*FACETS)/60))
@@ -24,4 +25,6 @@ print("SPINUP_TICKS {}".format(SPINUP_TICKS))
 print("MAX_WAIT_STABLE_TICKS {}".format(MAX_WAIT_STABLE_TICKS))
 print("END_OF_DATA_WAIT_TICKS {}".format(END_OF_DATA_WAIT_TICKS))
 
+SLED_SPEED = 1/STEPSPERMM*(RPM*FACETS/60)
+print("Sled speed is fixed at {} mm/s".format(SLED_SPEED))
 
