@@ -199,8 +199,8 @@ class Machine:
         self.pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
         self.pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
         self.pruss.core0.load(join(self.bin_folder, './stabilizer.bin'))
-        self.pruss.core0.dram.write([0]*self.pixelsinline*8+[0]*5)
-        self.pruss.core0.run()
+        #self.pruss.core0.dram.write([0]*self.pixelsinline*8+[0]*5)
+        #self.pruss.core0.run()
 
 
     def receive_command(self, byte):
@@ -244,7 +244,7 @@ class Machine:
         return error_index
 
     
-    def expose(self, line_data, direction, multiplier = 1):
+    def expose(self, line_data, direction, multiplier = 1, move=False):
         '''
         expose given line_data to substrate in given direction
         each line is exposed multiplier times.
@@ -252,14 +252,18 @@ class Machine:
         :param line_data; data to write to scanner, 1D binary numpy array
         :param multiplier; amount of times a line is exposed
         :param direction; direction of exposure, True is postive y (away from home)
+        :param move; if enabled moves stage
         '''
-        # constants needed from  laser-scribe-constants.h
+        self.enable_scanhead()
         QUEUE_LEN = 8
         if len(line_data) < QUEUE_LEN * self.pixelsinline or len(line_data) % self.pixelsinline:
             raise Exception('Data send to scanner seems invalid, sanity check 1.')
         if line_data.max() < 2 or line_data.min() < 0 or line_data.max() > 255:
             raise Exception('Data send to scanner seems invalid, sanity check 2')
-        GPIO.output(self.pins['y_enable'], GPIO.LOW) # motor on
+        if move:
+            GPIO.output(self.pins['y_enable'], GPIO.LOW)
+        else:
+            GPIO.output(self.pins['y_enable'], GPIO.HIGH)
         if direction:
             GPIO.output(self.pins['y_dir'], GPIO.HIGH)
         else:
@@ -286,6 +290,8 @@ class Machine:
             else:
                 raise Exception('Preparation data incorrect')
         
+        
+
         def receive_command(byte):
             #TODO: add timeout
             command_index = self.receive_command(byte)
@@ -295,6 +301,7 @@ class Machine:
 
         SCANLINE_DATA_SIZE = 1 + self.pixelsinline
         byte = START_RINGBUFFER = 5
+        self.pruss.core0.run()
         for line in range(line, len(line_data)):
             receive_command(byte)
             extra_data = list(line_data[line*self.pixelsinline:(line+1)*self.pixelsinline])
@@ -310,9 +317,11 @@ class Machine:
                 byte += SCANLINE_DATA_SIZE
                 if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                     byte = START_RINGBUFFER
+
+        self.disable_scanhead()
         
         SYNC_FAIL_POS = 1
-        #TODO: you expect sync fails, you are failing the sync
+        #NOTE: is sync fail properly tested?
         sync_fails = self.pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
         if sync_fails:
             print("There have been {} sync fails".format(sync_fails))  #TODO: write to log
