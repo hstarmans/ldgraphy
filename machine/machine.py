@@ -21,13 +21,14 @@ class Machine:
     def __init__(self):
         self.position = [0, 0]
         self.steps_per_mm = 76.2
-        self.pixelsinline = 230
+        self.pixelsinline = 187
         
         currentdir = dirname(realpath(__file__))
         self.bin_folder = join(currentdir, 'binaries')
         
         self.setuppins()
         self.setuppru()
+        self.loadconstants()
 
         self.digipot = I2C.get_i2c_device(0x28)
 
@@ -55,10 +56,12 @@ class Machine:
         '''
         loads COMMANDS and Errors
         '''
-        self.COMMANDS = ['CMD_EMPTY', 'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
+        self.COMMANDS = ['CMD_EMPTY',
+                'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
         self.COMMANDS += ['CMD_EXIT', 'CMD_DONE']
         self.COMMANDS = bidict(enumerate(self.COMMANDS))
-        self.ERRORS = ['ERROR_NONE', 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC']
+        self.ERRORS = ['ERROR_NONE',
+                'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC']
         self.ERRORS += ['ERROR_TIME_OVERRUN']
         self.ERRORS = bidict(enumerate(self.ERRORS))
 
@@ -208,7 +211,8 @@ class Machine:
         self.irq.irq_recv()
         self.pruss.intc.ev_clear_one(self.pruss.intc.out_event[self.IRQ])
         self.pruss.intc.out_enable_one(self.IRQ)
-        command_index = self.pruss.core0.dram.map(length = 1, offset = byte)
+        [command_index] = self.pruss.core0.dram.map(length = 1,
+                offset = byte)
         return command_index
 
 
@@ -225,7 +229,8 @@ class Machine:
         while not self.pruss.core0.halted:
             pass
         if self.COMMANDS[command_index] != 'CMD_DONE':
-            print("Unexpected command received; {}".format(self.COMMANDS[command_index]))
+            print("Unexpected command received; {}".format(
+                self.COMMANDS[command_index]))
         
     
     def error_received(self):
@@ -235,10 +240,12 @@ class Machine:
         can be used to read out errors from the laser scanner
         '''
         ERROR_RESULT_POS = 0
-        error_index = self.pruss.core0.dram.map(length = 1, offset = ERROR_RESULT_POS)[0]
+        error_index = self.pruss.core0.dram.map(length = 1,
+                offset = ERROR_RESULT_POS)[0]
         if error_index:
             try:
-                print("Error received; {}".format(self.ERRORS[error_index]))
+                print("Error received; {}".format(
+                    self.ERRORS[error_index]))
             except IndexError:
                 print("Error, error out of index")
         return error_index
@@ -251,15 +258,20 @@ class Machine:
 
         :param line_data; data to write to scanner, 1D binary numpy array
         :param multiplier; amount of times a line is exposed
-        :param direction; direction of exposure, True is postive y (away from home)
+        :param direction; direction of exposure,
+                          True is postive y (away from home)
         :param move; if enabled moves stage
         '''
         self.enable_scanhead()
         QUEUE_LEN = 8
-        if len(line_data) < QUEUE_LEN * self.pixelsinline or len(line_data) % self.pixelsinline:
-            raise Exception('Data send to scanner seems invalid, sanity check 1.')
-        if line_data.max() < 2 or line_data.min() < 0 or line_data.max() > 255:
-            raise Exception('Data send to scanner seems invalid, sanity check 2')
+        if (len(line_data) < QUEUE_LEN * self.pixelsinline 
+                or len(line_data) % self.pixelsinline):
+            raise Exception('''Data send to scanner seems invalid,
+                    sanity check 1.''')
+        if (line_data.max() < 2 or line_data.min() < 0
+                or line_data.max() > 255):
+            raise Exception('''Data send to scanner seems invalid,
+                    sanity check 2''')
         if move:
             GPIO.output(self.pins['y_enable'], GPIO.LOW)
         else:
@@ -274,7 +286,8 @@ class Machine:
         line = 0
         while counter < QUEUE_LEN:
             extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA']]
-            extra_data += list(line_data[line*self.pixelsinline:(line+1)*self.pixelsinline])
+            extra_data += list(line_data[line*self.pixelsinline:
+                (line+1)*self.pixelsinline])
             if multiplier > 1:
                 null_data = deepcopy(extra_data)
                 null_data[0] = self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
@@ -285,36 +298,48 @@ class Machine:
             write_data += extra_data
             counter += multiplier
             line += 1
-            if len(write_data) == 5 + QUEUE_LEN*(1 + self.pixelsinline):
-                self.pruss.core0.dram.write(write_data)
-            else:
-                raise Exception('Preparation data incorrect')
-        
-        
 
+        if len(write_data) == 5 + QUEUE_LEN*(1 + self.pixelsinline):
+            self.pruss.core0.dram.write(write_data)
+        else:
+            print(len(write_data))
+            raise Exception('Preparation data incorrect')
+        
+        
         def receive_command(byte):
             #TODO: add timeout
             command_index = self.receive_command(byte)
+            print(command_index)
             if self.COMMANDS[command_index] != 'CMD_EMPTY':
+                print("Received {}".format(self.COMMANDS[command_index]))
                 raise Exception('Line not empty')        
 
-
-        SCANLINE_DATA_SIZE = 1 + self.pixelsinline
+        
+        SCANLINE_DATA_SIZE = self.pixelsinline
+        SCANLINE_HEADER_SIZE = 1
+        SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         byte = START_RINGBUFFER = 5
         self.pruss.core0.run()
         for line in range(line, len(line_data)):
+            print("BYTE EQUALS {}".format(byte))
             receive_command(byte)
-            extra_data = list(line_data[line*self.pixelsinline:(line+1)*self.pixelsinline])
-            write_data = [self.COMMANDS.inv['CMD_SCAN_DATA']] + extra_data
+            extra_data = list(line_data[line*self.pixelsinline
+                :(line+1)*self.pixelsinline])
+            write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA']] 
+            + extra_data)
+            print("DATA WRITTEN LENGTH {}".format(len(write_data)))
             self.pruss.core0.dram.write(write_data, offset = byte)
-            byte += SCANLINE_DATA_SIZE
+            print(byte)
+            byte += SCANLINE_ITEM_SIZE
+            print(byte)
             if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                 byte = START_RINGBUFFER
             for counter in range(1, multiplier):
                 receive_command(byte)
-                write_data = [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']] + extra_data
+                write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
+                    ] + extra_data)
                 self.pruss.core0.dram.write(write_data)
-                byte += SCANLINE_DATA_SIZE
+                byte += SCANLINE_ITEM_SIZE
                 if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                     byte = START_RINGBUFFER
 
@@ -322,9 +347,11 @@ class Machine:
         
         SYNC_FAIL_POS = 1
         #NOTE: is sync fail properly tested?
-        sync_fails = self.pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
+        sync_fails = self.pruss.core0.dram.map(c_uint32,
+                offset = SYNC_FAIL_POS).value
         if sync_fails:
-            print("There have been {} sync fails".format(sync_fails))  #TODO: write to log
+            print("There have been {} sync fails".format(
+                sync_fails))  #TODO: write to log
         GPIO.output(self.pins['y_enable'], GPIO.HIGH) # motor off
 
 
