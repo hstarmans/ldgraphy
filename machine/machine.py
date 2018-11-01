@@ -52,6 +52,26 @@ class Machine:
         return abs(self.digipot.readU8(0))
 
 
+    def switch_laser(self, value):
+        '''
+        switches laser 0%, 50% or 100% on.
+        
+        :param value: {0:0, 1:50, 2:100} 
+        '''
+        self.pruss.core0.load(join(self.bin_folder,
+            'switch_laser.bin'))
+
+        class Params( Structure ):
+            _fields_ = [
+                    ("power", c_uint32)
+        ]
+        params0 = self.pruss.core0.dram.map(Params)
+        params0.power = int(round(value))
+        self.pruss.core0.run()
+        while not self.pruss.core0.halted:
+            pass
+
+
     def loadconstants(self):
         '''
         loads COMMANDS and Errors
