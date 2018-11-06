@@ -1,4 +1,6 @@
 '''
+Class which can be used to be interact with Hexastorm via Firestarter
+
 @company: Hexastorm
 @author: Rik Starmans
 '''
@@ -7,14 +9,12 @@ from time import sleep
 from ctypes import c_uint32, Structure
 from os.path import join, dirname, realpath
 
-
 from pyuio.ti.icss import Icss
 from pyuio.uio import Uio
 import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_GPIO.I2C as I2C
 import numpy as np
 from bidict import bidict
-
 
 
 class Machine:

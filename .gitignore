@@ -9,3 +9,4 @@ ldgraphy
 .vscode
 *.png
 *pycache*
+*.log
