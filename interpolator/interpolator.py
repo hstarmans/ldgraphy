@@ -202,6 +202,7 @@ class Interpolator:
         print("elapsed {}".format(time()-ctime))
         if ptrn.min()<0 or ptrn.max()>1:
             raise Exception('This is not a bit list.')
+        ptrn = np.logical_not(ptrn)
         ptrn = np.packbits(ptrn)
         return ptrn
 
