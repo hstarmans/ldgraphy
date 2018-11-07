@@ -50,15 +50,13 @@
 #define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
 #define SCANLINE_DATA_SIZE 171   
 #define SCANLINE_ITEM_SIZE (SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE)
-#define QUEUE_LEN 8
+#define QUEUE_LEN 8              // should be multiple of facets, to ensure 1 on 1 facet relation
 #define ERROR_RESULT_POS 0       // byte 0 = error
-#define SYNC_FAIL_POS   1        // byte 1-4 = sync fails
-#define START_RINGBUFFER 5       // byte 5 ... lines
+#define START_RINGBUFFER 1       // byte 1 ... lines
 
 
 #define SPINUP_TICKS 600000 // 1.5 seconds
 
 #define MAX_WAIT_STABLE_TICKS 450000 // 1.125 seconds, laser on waiting for sync error if expires
-#define END_OF_DATA_WAIT_TICKS 300000 // 0.75 seconds, no data in time reset to idle, +1 sync fail
 
 #endif // LASER_SCRIBE_CONSTANTS_H
