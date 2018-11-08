@@ -288,8 +288,7 @@ class Machine:
                 or len(line_data) % self.pixelsinline):
             raise Exception('''Data send to scanner seems invalid,
                     sanity check 1.''')
-        if (line_data.max() < 2 or line_data.min() < 0
-                or line_data.max() > 255):
+        if (line_data.max() < 1 or line_data.max() > 255):
             raise Exception('''Data send to scanner seems invalid,
                     sanity check 2''')
         if move:
