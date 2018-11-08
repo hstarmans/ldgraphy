@@ -1,4 +1,6 @@
 '''
+Class which can be used to be interact with instrument
+
 @company: Hexastorm
 @author: Rik Starmans
 '''
@@ -7,14 +9,12 @@ from time import sleep
 from ctypes import c_uint32, Structure
 from os.path import join, dirname, realpath
 
-
 from pyuio.ti.icss import Icss
 from pyuio.uio import Uio
 import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_GPIO.I2C as I2C
 import numpy as np
 from bidict import bidict
-
 
 
 class Machine:
@@ -236,7 +236,7 @@ class Machine:
         return command_index
 
 
-    def disable_scanhead(self, byte=5):
+    def disable_scanhead(self, byte=1):
         '''
         disables scanhead
 
@@ -338,7 +338,7 @@ class Machine:
         SCANLINE_DATA_SIZE = self.pixelsinline
         SCANLINE_HEADER_SIZE = 1
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
-        byte = START_RINGBUFFER = 5
+        byte = START_RINGBUFFER = 1
         self.pruss.core0.run()
         # clean up the rest which remains
         for counter in range(QUEUE_LEN, line-1+multiplier):
@@ -371,14 +371,6 @@ class Machine:
                     byte = START_RINGBUFFER
 
         self.disable_scanhead(byte)
-        
-        SYNC_FAIL_POS = 1
-        #NOTE: is sync fail properly tested?
-        sync_fails = self.pruss.core0.dram.map(c_uint32,
-                offset = SYNC_FAIL_POS).value
-        if sync_fails:
-            print("There have been {} sync fails".format(
-                sync_fails))  #TODO: write to log
         GPIO.output(self.pins['y_enable'], GPIO.HIGH) # motor off
 
 

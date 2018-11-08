@@ -1,3 +1,11 @@
+'''
+Function which can be used to print layer
+
+Run as standalone script
+
+@company: Hexastorm
+@author: Rik Starmans
+'''
 import numpy as np
 from machine import Machine
 

@@ -53,7 +53,6 @@
 
 	.u32 item_start	        ; Start position of current item in ringbuffer
 	.u32 item_pos		; position within item.
-        .u32 sync_fails         ; number of lines failed to sync
 
 	.u16 state		; Current state machine state.
 	.u8  bit_loop		; bit loop
@@ -144,8 +143,7 @@ INIT:
 	;; Set GPIO bits to writable. Output bits need to be set to 0.
 
 	MOV v.item_start, START_RINGBUFFER    ; command byte position in DRAM
-	MOV v.state, STATE_IDLE
-        MOV v.sync_fails, 0
+	MOV v.state, STATE_RESTART
 
 	start_cpu_cycle_counter
 
@@ -156,11 +154,8 @@ MAIN_LOOP:
 
 
 	;; Each of these states must not use more than TICK_DELAY steps
-
 	;; Waiting for Data to arrive
-STATE_IDLE:
-	QBEQ FINISH, r1.b0, CMD_EXIT
-	QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
+STATE_RESTART:
         MOV v.global_time, 0	; have monotone increasing time for 1h or so
 	MOV v.wait_countdown, SPINUP_TICKS
         MOV v.last_hsync_time, 0
@@ -260,7 +255,10 @@ STATE_WAIT_FOR_DATA_RUN:
 	;; through each bit, once per state.
 STATE_DATA_RUN:
 	MOV r1, v.item_size
+	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
+	QBEQ end_data_run, r1.b0, CMD_EMPTY
 	QBLT data_run_data_output, r1, v.item_pos
+end_data_run:
 	MOV v.state, STATE_ADVANCE_RINGBUFFER
 	JMP MAIN_LOOP_NEXT
 data_run_data_output:
@@ -294,42 +292,30 @@ STATE_ADVANCE_RINGBUFFER:
 
 	;; check if we need to advance stepper
 	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
-	QBEQ advance_sled_done, r1.b0, CMD_SCAN_DATA_NO_SLED
+	QBNE advance_sled_done, r1.b0, CMD_SCAN_DATA
 	SET r30.t3
 advance_sled_done:
+        QBNE signal_host_done, r1.b0, CMD_EMPTY
 	;; signal host that we are done with this item.
 	MOV r1.b0, CMD_EMPTY
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
 	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; tell that status changed.
-
+signal_host_done:
 	ADD v.item_start, v.item_start, v.item_size ; advance in ringbuffer
 	QBLT rb_advanced, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
 	MOV v.item_start, START_RINGBUFFER	; Wrap around
 rb_advanced:
-	MOV v.wait_countdown, END_OF_DATA_WAIT_TICKS
-	MOV v.state, STATE_AWAIT_MORE_DATA
+	MOV v.state, STATE_READ_COMMAND
 	JMP MAIN_LOOP_NEXT
 
-STATE_AWAIT_MORE_DATA:
-	SUB v.wait_countdown, v.wait_countdown, 1
-	QBNE active_data_wait, v.wait_countdown, 0
-	;; ok, we waited too long, let us switch off motors and go back
-	;; to idle.
-        MOV r1, 1000000 ; random just some upper limit to prevent overflow
-        QBLT ringbufferreset, r1, v.sync_fails 
-        ADD v.sync_fails, v.sync_fails, 1
-ringbufferreset:
-	MOV v.state, STATE_IDLE
-	JMP MAIN_LOOP_NEXT
-
-active_data_wait:
+;; TODO: END_OF_DATA_WAIT_TICKS should be dependent on polygoon speed
+;; waits a bit for more data or moves to next element
+;; the idea of a datawait is crazy; you have already waited 7 periods by this time.
+STATE_READ_COMMAND:
 	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
 	QBEQ FINISH, r1.b0, CMD_EXIT
-	QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
-
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
 	MOV v.bit_loop, 7
-
 	MOV v.state, STATE_DATA_WAIT_FOR_SYNC
 	JMP MAIN_LOOP_NEXT
 
@@ -361,7 +347,6 @@ FINISH:
 	;; Tell host that we have seen the CMD_EXIT and acknowledge with CMD_DONE
 	MOV r1.b0, CMD_DONE
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
-        SBCO v.sync_fails, CONST_PRUDRAM, SYNC_FAIL_POS, 4
 	HALT
 
 REPORT_ERROR_MIRROR:
