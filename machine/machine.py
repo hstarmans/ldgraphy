@@ -1,5 +1,5 @@
 '''
-Class which can be used to be interact with Hexastorm via Firestarter
+Class which can be used to be interact with instrument
 
 @company: Hexastorm
 @author: Rik Starmans
@@ -236,7 +236,7 @@ class Machine:
         return command_index
 
 
-    def disable_scanhead(self, byte=5):
+    def disable_scanhead(self, byte=1):
         '''
         disables scanhead
 
@@ -288,8 +288,7 @@ class Machine:
                 or len(line_data) % self.pixelsinline):
             raise Exception('''Data send to scanner seems invalid,
                     sanity check 1.''')
-        if (line_data.max() < 2 or line_data.min() < 0
-                or line_data.max() > 255):
+        if (line_data.max() < 1 or line_data.max() > 255):
             raise Exception('''Data send to scanner seems invalid,
                     sanity check 2''')
         if move:
@@ -339,7 +338,7 @@ class Machine:
         SCANLINE_DATA_SIZE = self.pixelsinline
         SCANLINE_HEADER_SIZE = 1
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
-        byte = START_RINGBUFFER = 5
+        byte = START_RINGBUFFER = 1
         self.pruss.core0.run()
         # clean up the rest which remains
         for counter in range(QUEUE_LEN, line-1+multiplier):
@@ -372,14 +371,6 @@ class Machine:
                     byte = START_RINGBUFFER
 
         self.disable_scanhead(byte)
-        
-        SYNC_FAIL_POS = 1
-        #NOTE: is sync fail properly tested?
-        sync_fails = self.pruss.core0.dram.map(c_uint32,
-                offset = SYNC_FAIL_POS).value
-        if sync_fails:
-            print("There have been {} sync fails".format(
-                sync_fails))  #TODO: write to log
         GPIO.output(self.pins['y_enable'], GPIO.HIGH) # motor off
 
 
