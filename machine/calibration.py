@@ -2,6 +2,7 @@
 Function which can be used to measure accuracy of Hexastorm via camera
 
 Connects to PiZero Camera and takes pictures
+Server side, first start client at Pizero camera.
 @company: Hexastorm
 @author: Rik Starmans
 '''

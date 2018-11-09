@@ -1,15 +1,11 @@
 Remote services
 ===================================
 
-The beaglebone will connect as server to two clients via USB using the Zero4U hub.
+The Beaglebone will connect as server to a client via USB.
 ZMQ in combination with SSH will be used. <br>
 
   * Laser spot client; <br>
       Raspberry PI zero camera with no lens and neutral density filter
-      Determines laser spot size from image <br>
+      Determines laser spot size from direct illumanation. At the moment, a laptop with
+      uEye camera is used as it was readily available. <br>
       laserspot_client.py
-  * PCB detection client; <br>
-      Raspberry Pi zero camera with refocussed stock lens and light
-      Calculates PCB position <br>
-      not implemented
-   
