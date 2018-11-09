@@ -1,8 +1,11 @@
 ;; -*- asm -*-
+;; LDgraphy was created by;
 ;;
 ;; (c) 2017 Henner Zeller <h.zeller@acm.org>
 ;;
-;; This file is part of LDGraphy. http://github.com/hzeller/ldgraphy
+;; This file is part of a fork of LDGraphy, https://github.com/hstarmans/ldgraphy
+;; 
+;; (c) 2018 Henri Starmans <info@hexastorm.com>
 ;;
 ;; LDGraphy is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -25,8 +28,6 @@
 
 #define PRU0_ARM_INTERRUPT 19
 #define CONST_PRUDRAM	   C24
-
-
 #define PRUSS_PRU_CTL      0x22000
 #define CYCLE_COUNTER_OFFSET  0x0C
 
@@ -58,7 +59,7 @@
 	.u8  bit_loop		; bit loop
 	.u8  last_hsync_bit	; so that we can trigger on an edge
 .ends
-.assign Variables, r10, r22, v
+.assign Variables, r10, r21, v
 
 ;; Registers
 ;; r1 ... r9 : common use
