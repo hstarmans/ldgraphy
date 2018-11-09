@@ -418,4 +418,3 @@ class Machine:
             return spotinfo
         except NameError:
             pass
-
