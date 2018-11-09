@@ -8,6 +8,7 @@ from copy import deepcopy
 from time import sleep
 from ctypes import c_uint32, Structure
 from os.path import join, dirname, realpath
+import pickle
 
 from pyuio.ti.icss import Icss
 from pyuio.uio import Uio
@@ -15,10 +16,47 @@ import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_GPIO.I2C as I2C
 import numpy as np
 from bidict import bidict
+import zmq
+
+
+class Camera:
+    '''
+    class to interact with remote camera via ZMQ
+    '''
+    def __init__(self, camera = False):
+        self.connect()
+        if not self.is_connected():
+            raise Exception('Can not connect to camera')
+
+
+    def connect(self, port = '5556'):
+        '''
+        connect with remote camera
+        '''
+        context = zmq.Context()
+        self.socket = context.socket(zmq.PAIR)
+        self.socket.bind('tcp://*:%s' % port)
+
+
+    def is_connected(self):
+        '''
+        checks connection
+        '''
+        self.socket.send_string('connected')
+        return self.socket.recv_pyobj()
+
+
+    def get_spotinfo(self):
+        '''
+        return spotsize and position in dictionary
+        '''
+        self.socket.send_string('spotinfo')
+        return self.socket.recv_pyobj()
+
 
 
 class Machine:
-    def __init__(self):
+    def __init__(self, camera = False):
         self.position = [0, 0]
         self.steps_per_mm = 76.2
         self.pixelsinline = 171
@@ -29,6 +67,8 @@ class Machine:
         self.setuppins()
         self.setuppru()
         self.loadconstants()
+        if camera:
+            self.camera = Camera()
 
         self.digipot = I2C.get_i2c_device(0x28)
 
@@ -36,8 +76,11 @@ class Machine:
     #TODO: do via getter / setter?
     def set_laser_power(self, value):
         '''
-        sets laser power to given value
+        set laser power to given value
 
+        The laser power can be changed in two ways.
+        First by using one or two channels. Second by setting the DAC value.
+        Here the DAC value is set.
         :param value: laser power
         '''
         if value < 0 or value > 255:
@@ -56,6 +99,10 @@ class Machine:
         '''
         switches laser 0%, 50% or 100% on.
         
+        The laser power can be changed in two ways.
+        First by using one or two channels. Second by setting the DAC value.
+        Here the amount of channels used is set. Changing the amount of channels is not supported
+        in the exposer.
         :param value: {0:0, 1:50, 2:100} 
         '''
         self.pruss.core0.load(join(self.bin_folder,
@@ -222,8 +269,9 @@ class Machine:
         self.pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
         self.pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
         self.pruss.core0.load(join(self.bin_folder, './stabilizer.bin'))
-        #self.pruss.core0.dram.write([0]*self.pixelsinline*8+[0]*5)
-        #self.pruss.core0.run()
+        # flush memory, in new version of Py-UIO there is a function to do this
+        self.pruss.core0.dram.write([0]*self.pixelsinline*8+[0]*5)
+        self.pruss.core0.run()
 
 
     def receive_command(self, byte):
@@ -244,13 +292,8 @@ class Machine:
         '''
         data = [self.COMMANDS.inv['CMD_EXIT']]
         self.pruss.core0.dram.write(data, offset = byte)
-        #TODO: no longer works as you removed trigger! add again
-        #command_index = self.receive_command(START_RINGBUFFER)
         while not self.pruss.core0.halted:
             pass
-        #if self.COMMANDS[command_index] != 'CMD_DONE':
-        #    print("Unexpected command received; {}".format(
-        #        self.COMMANDS[command_index]))
         
     
     def error_received(self):
@@ -271,26 +314,25 @@ class Machine:
         return error_index
 
     
-    def expose(self, line_data, direction, multiplier = 1, move=False):
+    def expose(self, line_data, direction, multiplier = 1, move = False, takepicture = False):
         '''
         expose given line_data to substrate in given direction
         each line is exposed multiplier times.
+        returns result of takepicture
 
         :param line_data; data to write to scanner, 1D binary numpy array
         :param multiplier; amount of times a line is exposed
         :param direction; direction of exposure,
                           True is postive y (away from home)
         :param move; if enabled moves stage
+        :param takepicture; if enabled takes picture
         '''
-        self.enable_scanhead()
         QUEUE_LEN = 8
         if (len(line_data) < QUEUE_LEN * self.pixelsinline 
                 or len(line_data) % self.pixelsinline):
-            raise Exception('''Data send to scanner seems invalid,
-                    sanity check 1.''')
+            raise Exception('Data invalid, should be longer than ringbuffer.')
         if (line_data.max() < 1 or line_data.max() > 255):
-            raise Exception('''Data send to scanner seems invalid,
-                    sanity check 2''')
+            raise Exception('Data invalid, values out of range.')
         if move:
             GPIO.output(self.pins['y_enable'], GPIO.LOW)
         else:
@@ -339,8 +381,7 @@ class Machine:
         SCANLINE_HEADER_SIZE = 1
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         byte = START_RINGBUFFER = 1
-        self.pruss.core0.run()
-        # clean up the rest which remains
+        # write remaining lines
         for counter in range(QUEUE_LEN, line-1+multiplier):
             receive_command(byte)
             extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
@@ -353,6 +394,8 @@ class Machine:
 
         for line in range(line, len(line_data)//self.pixelsinline):
             receive_command(byte)
+            if line == 0 and takepicture:
+                spotinfo = self.camera.get_spotinfo()
             extra_data = list(line_data[line*self.pixelsinline
                 :(line+1)*self.pixelsinline])
             write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA']] 
@@ -369,16 +412,10 @@ class Machine:
                 byte += SCANLINE_ITEM_SIZE
                 if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                     byte = START_RINGBUFFER
-
-        self.disable_scanhead(byte)
         GPIO.output(self.pins['y_enable'], GPIO.HIGH) # motor off
 
-
-            
-
-
-
-    
-
-
+        try:
+            return spotinfo
+        except NameError:
+            pass
 
