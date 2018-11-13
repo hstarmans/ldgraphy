@@ -103,6 +103,18 @@ class Camera:
                                   format_list, ueye.sizeof(format_list)))
         return format_list
 
+
+    def set_exposure(self, ms=0.12):
+         ueye.is_Exposure(self.h_cam, ueye.IS_EXPOSURE_CMD_SET_EXPOSURE, 
+            ueye.DOUBLE(ms), ueye.sizeof(ueye.DOUBLE(ms)))
+
+    def get_exposure(self):
+        ms = ueye.DOUBLE(22)
+        ueye.is_Exposure(self.h_cam, ueye.IS_EXPOSURE_CMD_GET_EXPOSURE, 
+            ms, ueye.sizeof(ueye.DOUBLE(ms)))
+        return ms.value
+
+
     def set_full_auto(self):
         print("full auto")
         disable = ueye.DOUBLE(0)

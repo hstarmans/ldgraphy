@@ -36,12 +36,12 @@ def getellipse(img):
 #               #sort contours
 #           contours.sort(createkey).reverse()    
     if len(contours) == 0 or len(contours)>2:
-        logging.info("Detected multiple spots")
+        logging.info("Detected none or multiple spots")
         return None
     try:
         el = cv2.fitEllipse(contours[0])
-        print('Short axis: '+str(round(el[1][0]*pixelsize,2))+' micrometers.')
-        print('Long axis: '+str(round(el[1][1]*pixelsize,2))+' micrometers.')
+        logging.info('Short axis: '+str(round(el[1][0]*pixelsize,2))+' micrometers.')
+        logging.info('Long axis: '+str(round(el[1][1]*pixelsize,2))+' micrometers.')
         return el
     except:
         logging.info("Spot not detected")

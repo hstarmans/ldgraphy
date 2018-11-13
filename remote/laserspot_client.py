@@ -39,7 +39,7 @@ class Cam:
         if self.cam.init():	
             raise Exception("Can't init camera")
         self.cam.alloc()
-    
+
     def __enter__(self):
         return self
 
@@ -64,23 +64,29 @@ class Cam:
         image_data.unlock()
         self.cam.stop_video()
         return img
-        
+
 
 def main():
     context = zmq.Context()
     socket = context.socket(zmq.PAIR)
-    socket.connect('tcp://10.42.0.192:%s' % PORT)
+    socket.connect('tcp://10.42.0.105:%s' % PORT)
     with Cam() as camera:
+
+
         def get_spotinfo():
             img = camera.take_picture()
+            return spots.getellipse(img)
+
+
+        def is_connected():
+            return True
 
 
         while True:
             msg = socket.recv_string()
             logging.info('Executing call {}'.format(msg))
             res = eval(msg+'()')
-            socket.send_string('client message to server1')
-            socket.send_string('client message to server2')
+            socket.send_pyobj(res)
             time.sleep(1)
 
 
