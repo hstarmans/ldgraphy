@@ -255,9 +255,9 @@ STATE_WAIT_FOR_DATA_RUN:
 	;; Loop to send all the data. We go through each byte, and within that
 	;; through each bit, once per state.
 STATE_DATA_RUN:
-	MOV r1, v.item_size
 	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
 	QBEQ end_data_run, r1.b0, CMD_EMPTY
+        MOV r1, v.item_size
 	QBLT data_run_data_output, r1, v.item_pos
 end_data_run:
 	MOV v.state, STATE_ADVANCE_RINGBUFFER
@@ -296,7 +296,7 @@ STATE_ADVANCE_RINGBUFFER:
 	QBNE advance_sled_done, r1.b0, CMD_SCAN_DATA
 	SET r30.t3
 advance_sled_done:
-        QBNE signal_host_done, r1.b0, CMD_EMPTY
+        QBEQ signal_host_done, r1.b0, CMD_EMPTY
 	;; signal host that we are done with this item.
 	MOV r1.b0, CMD_EMPTY
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1

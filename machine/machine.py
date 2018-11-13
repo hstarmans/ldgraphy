@@ -274,14 +274,49 @@ class Machine:
         self.pruss.core0.run()
 
 
-    def receive_command(self, byte):
+    def receive_command(self, byte = None, check = False):
+        '''
+        receives command at given offset, if byte is None
+        start to look for first possible CMD_EMPTY byte
+        '''
+        SCANLINE_DATA_SIZE = self.pixelsinline
+        SCANLINE_HEADER_SIZE = 1
+        START_RINGBUFFER = 1
+        QUEUE_LEN = 8
+        SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         self.pruss.intc.out_enable_one(self.IRQ) 
         self.irq.irq_recv()
         self.pruss.intc.ev_clear_one(self.pruss.intc.out_event[self.IRQ])
         self.pruss.intc.out_enable_one(self.IRQ)
-        [command_index] = self.pruss.core0.dram.map(length = 1,
-                offset = byte)
-        return command_index
+        if not byte: 
+            byte = START_RINGBUFFER
+            count = 0
+            while True:
+                [command_index] = self.pruss.core0.dram.map(length = 1,
+                                    offset = byte)
+                if self.COMMANDS[command_index] == 'CMD_EMPTY':
+                    break
+                else:
+                    byte += SCANLINE_ITEM_SIZE
+                if byte > QUEUE_LEN * SCANLINE_DATA_SIZE:
+                    byte = START_RINGBUFFER
+                    count += 1
+                    if count > 10:
+                        raise Exception("Can't pick" + 
+                                " up with ongong scan")
+            return byte
+        else:
+            [command_index] = self.pruss.core0.dram.map(length = 1,
+                                    offset = byte)
+            if check:
+                for i in range(1,10):
+                    [command_index] = self.pruss.core0.dram.map(
+                            length = 1, offset = byte)
+                    if self.COMMANDS[command_index] == 'CMD_EMPTY':
+                        break
+                if i == 10:
+                    raise Exception('Check failed')
+            return command_index
 
 
     def disable_scanhead(self, byte=1):
@@ -343,7 +378,7 @@ class Machine:
         else:
             GPIO.output(self.pins['y_dir'], GPIO.LOW)
         # prep scanner by writing 8 lines to buffer
-        write_data = [self.ERRORS.inv['ERROR_NONE']] + [0]*4
+        write_data = [self.ERRORS.inv['ERROR_NONE']] 
         counter = 0
         line = 0
         while counter < QUEUE_LEN:
@@ -362,28 +397,23 @@ class Machine:
             counter += multiplier-1
             line += 1
 
-        if len(write_data) == 5 + QUEUE_LEN*(1 + self.pixelsinline):
+        if len(write_data) == 1 + QUEUE_LEN*(1 + self.pixelsinline):
             self.pruss.core0.dram.write(write_data)
         else:
             print(len(write_data))
             raise Exception('Preparation data incorrect')
         
         
-        def receive_command(byte):
-            #TODO: add timeout
-            command_index = self.receive_command(byte)
-            if self.COMMANDS[command_index] != 'CMD_EMPTY':
-                print("Received {}".format(self.COMMANDS[command_index]))
-                raise Exception('Line not empty')        
-
-        
         SCANLINE_DATA_SIZE = self.pixelsinline
         SCANLINE_HEADER_SIZE = 1
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         byte = START_RINGBUFFER = 1
-        # write remaining lines
+        
         for counter in range(QUEUE_LEN, line-1+multiplier):
-            receive_command(byte)
+            if counter == QUEUE_LEN:
+                byte = self.receive_command(None)
+            else:
+                self.receive_command(byte, True)
             extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
             extra_data += list(line_data[(line-1)*self.pixelsinline:
                 (line)*self.pixelsinline])
@@ -393,7 +423,12 @@ class Machine:
                 byte = START_RINGBUFFER
 
         for line in range(line, len(line_data)//self.pixelsinline):
-            receive_command(byte)
+            if line == QUEUE_LEN:
+                print("hitting")
+                byte = self.receive_command(None)
+                print('byte set to {}'.format(byte))
+            else:
+                self.receive_command(byte, True)
             if line == 0 and takepicture:
                 spotinfo = self.camera.get_spotinfo()
             extra_data = list(line_data[line*self.pixelsinline
