@@ -42,7 +42,7 @@ class Camera:
         '''
         checks connection
         '''
-        self.socket.send_string('connected')
+        self.socket.send_string('is_connected')
         return self.socket.recv_pyobj()
 
 
@@ -50,7 +50,7 @@ class Camera:
         '''
         return spotsize and position in dictionary
         '''
-        self.socket.send_string('spotinfo')
+        self.socket.send_string('get_spotinfo')
         return self.socket.recv_pyobj()
 
 
