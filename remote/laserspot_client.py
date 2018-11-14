@@ -80,8 +80,8 @@ def main():
 
 
         def get_spotinfo():
-            img = camera.take_picture(pixelsize = 4.65)
-            return spots.getellipse(img)
+            img = camera.take_picture()
+            return spots.getellipse(img, pixelsize = 4.65)
 
 
         def is_connected():

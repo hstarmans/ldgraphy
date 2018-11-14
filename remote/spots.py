@@ -8,7 +8,7 @@ import logging
 import numpy as np
 
 
-def getellipse(img, pixelsize = 4.65):
+def getellipse(img, pixelsize = 4.65, ellipse = True):
     '''
     returns position [x, y], short axis diameter, long axis diameter in micrometers
     '''
@@ -37,16 +37,19 @@ def getellipse(img, pixelsize = 4.65):
         logging.info("Detected none or multiple spots")
         return None
     try:
-        el = cv2.fitEllipse(contours[0])
-        dct = {
-            'position' : list(np.array(el[0])*pixelsize),
-            'axes' : list(np.array(el[1])*pixelsize)
-        }
-        return dct
+        if ellipse:
+            el = cv2.fitEllipse(contours[0])
+        else:
+            el = cv2.minEnclosingCircle(contours[0])
     except:
         logging.info("Spot not detected")
         return None
-
+    else:
+        dct = {
+            'position' : list(np.array(el[0])*pixelsize),
+            'axes' : np.array(el[1])*pixelsize
+        }
+        return dct
 
 
 
