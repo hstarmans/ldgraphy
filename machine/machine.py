@@ -38,11 +38,19 @@ class Camera:
         self.socket.bind('tcp://*:%s' % port)
 
 
+    def set_exposure(self, ms):
+        '''
+        sets exposure in ms
+        '''
+        self.socket.send_string('is_connected({})'.format(ms))
+        return self.socket.recv_pyobj()
+
+
     def is_connected(self):
         '''
         checks connection
         '''
-        self.socket.send_string('is_connected')
+        self.socket.send_string('is_connected()')
         return self.socket.recv_pyobj()
 
 
@@ -50,9 +58,8 @@ class Camera:
         '''
         return spotsize and position in dictionary
         '''
-        self.socket.send_string('get_spotinfo')
+        self.socket.send_string('get_spotinfo()')
         return self.socket.recv_pyobj()
-
 
 
 class Machine:

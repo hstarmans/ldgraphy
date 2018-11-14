@@ -5,14 +5,13 @@ only contains function to retreive ellipse
 '''
 import cv2
 import logging
+import numpy as np
 
 
-def getellipse(img):
+def getellipse(img, pixelsize = 4.65):
     '''
-    prints short and long axis and returns ellipse detected in supplied image
-
+    returns position [x, y], short axis diameter, long axis diameter in micrometers
     '''
-    pixelsize = 4.65 # micrometers
     if img.max() == 255:
         logging.info("Camera satured, spotsize can be incorrect")
         return None
@@ -23,8 +22,7 @@ def getellipse(img):
     # RGB image to gray
     imgray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     # Converts gray scale image to binary using a threshold
-    # Values below 127 are mapped to 0 and values above 127 are mapped to 255
-    ret,thresh = cv2.threshold(imgray,127,255,cv2.THRESH_BINARY)
+    ret,thresh = cv2.threshold(imgray,img.max()//2,255,cv2.THRESH_BINARY)
     # find the contours
     im2, contours, hierarchy = cv2.findContours\
                     (thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -40,9 +38,11 @@ def getellipse(img):
         return None
     try:
         el = cv2.fitEllipse(contours[0])
-        logging.info('Short axis: '+str(round(el[1][0]*pixelsize,2))+' micrometers.')
-        logging.info('Long axis: '+str(round(el[1][1]*pixelsize,2))+' micrometers.')
-        return el
+        dct = {
+            'position' : list(np.array(el[0])*pixelsize),
+            'axes' : list(np.array(el[1])*pixelsize)
+        }
+        return dct
     except:
         logging.info("Spot not detected")
         return None

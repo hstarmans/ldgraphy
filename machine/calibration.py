@@ -8,7 +8,10 @@ Server side, first start client at Pizero camera.
 '''
 import sys
 import time
+
+
 from itertools import combinations
+import numpy as np
 
 from machine import Machine
 
@@ -25,12 +28,19 @@ class Calibrator(Machine):
         max travel laserdiode spot over 10 seconds
         if polygon does not move
         '''
-        self.set_laser_power(125)
-        self.switch_laser(1)
-        for i in range(0, 10):
-            time.sleep(1)
-            self.camera.get_spotinfo()
-        pass
+        self.set_laser_power(90)
+        positions = list()
+        axes = np.zeros(2)
+        repetitions = 10
+        for i in range(0, repetitions):
+            self.switch_laser(1)
+            spotinfo = self.camera.get_spotinfo()
+            positions.append(spotinfo['position'])
+            axes += np.array(spotinfo['axes'])
+            self.switch_laser(0)
+
+        return axes/repetitions, self.max_distance(positions)
+
 
     def check_laserspotmoving(self):
         '''

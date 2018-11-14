@@ -71,10 +71,16 @@ def main():
     socket = context.socket(zmq.PAIR)
     socket.connect('tcp://10.42.0.105:%s' % PORT)
     with Cam() as camera:
+        camera.cam.set_pixelclock(20)
+
+
+        def set_exposure(ms):
+            camera.cam.set_exposure(ms)
+            return True
 
 
         def get_spotinfo():
-            img = camera.take_picture()
+            img = camera.take_picture(pixelsize = 4.65)
             return spots.getellipse(img)
 
 
@@ -85,7 +91,7 @@ def main():
         while True:
             msg = socket.recv_string()
             logging.info('Executing call {}'.format(msg))
-            res = eval(msg+'()')
+            res = eval(msg)
             socket.send_pyobj(res)
             time.sleep(1)
 

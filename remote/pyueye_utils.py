@@ -104,9 +104,37 @@ class Camera:
         return format_list
 
 
+    def set_pixelclock(self, freq = 20):
+        '''
+        set pixelclock in MHz
+        param freq: pixelclock in MHz
+        ''' 
+        mhz = ueye.UINT(freq)
+        ret = ueye.is_PixelClock(self.h_cam, ueye.IS_PIXELCLOCK_CMD_SET, mhz,
+         ueye.sizeof(mhz))
+        if ret:
+            raise Exception('Set pixelclock failed')
+        
+
+    def get_pixelclock(self):
+        '''
+        returns pixelclock in MHz
+        
+        ''' 
+        mhz = ueye.UINT(22)
+        ret = ueye.is_PixelClock(self.h_cam, ueye.IS_PIXELCLOCK_CMD_GET, mhz,
+         ueye.sizeof(mhz))
+        if ret:
+            raise Exception('Get pixelclock failed')
+        return mhz.value
+
+
     def set_exposure(self, ms=0.12):
-         ueye.is_Exposure(self.h_cam, ueye.IS_EXPOSURE_CMD_SET_EXPOSURE, 
+        ret = ueye.is_Exposure(self.h_cam, ueye.IS_EXPOSURE_CMD_SET_EXPOSURE, 
             ueye.DOUBLE(ms), ueye.sizeof(ueye.DOUBLE(ms)))
+        if ret:
+            raise Exception('Set Exposure failed')
+
 
     def get_exposure(self):
         ms = ueye.DOUBLE(22)
