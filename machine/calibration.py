@@ -19,24 +19,26 @@ from machine import Machine
 class Calibrator(Machine):
 
 
-    def __init__(self):
-        super.__init__()
+    def __init__(self, camera = True):
+        super().__init__(camera)
 
 
-    def check_laserspotbare(self):
+    def check_laserspotbare(self, power=90, ms=0.12, repetitions = 10):
         '''
         max travel laserdiode spot over 10 seconds
         if polygon does not move
+
+        preliminary experiments indicate ellipse is more stable measure
         '''
-        self.set_laser_power(90)
+        self.set_laser_power(power)
+        self.camera.set_exposure(ms)
         positions = list()
         axes = np.zeros(2)
-        repetitions = 10
         for i in range(0, repetitions):
             self.switch_laser(1)
             spotinfo = self.camera.get_spotinfo()
             positions.append(spotinfo['position'])
-            axes += np.array(spotinfo['axes'])
+            axes += spotinfo['axes']
             self.switch_laser(0)
 
         return axes/repetitions, self.max_distance(positions)
@@ -68,7 +70,8 @@ class Calibrator(Machine):
                 max_square_distance = square_distance(*pair)
                 max_pair = pair  
 
-        return {'distance': max_square_distance, 'pair': max_pair}
+        return {'distance': pow(max_square_distance, 0.5),
+                'pair': max_pair}
 
 
 

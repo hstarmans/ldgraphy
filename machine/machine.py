@@ -42,7 +42,7 @@ class Camera:
         '''
         sets exposure in ms
         '''
-        self.socket.send_string('is_connected({})'.format(ms))
+        self.socket.send_string('set_exposure({})'.format(ms))
         return self.socket.recv_pyobj()
 
 
