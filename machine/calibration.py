@@ -23,12 +23,14 @@ class Calibrator(Machine):
         super().__init__(camera)
 
 
-    def check_laserspotbare(self, power=90, ms=0.12, repetitions = 10):
+    def check_laserspotbare(self, power=90, ms=0.12, repetitions=10):
         '''
-        max travel laserdiode spot over 10 seconds
-        if polygon does not move
+        max travel laserdiode spot over repitions, polygon disabled
 
         preliminary experiments indicate ellipse is more stable measure
+        :param power: laser power
+        :param ms: exposure time camera in miliseconds
+        :param repetitions: number of repitions
         '''
         self.set_laser_power(power)
         self.camera.set_exposure(ms)
@@ -44,12 +46,36 @@ class Calibrator(Machine):
         return axes/repetitions, self.max_distance(positions)
 
 
-    def check_laserspotmoving(self):
+    def check_laserspotmoving(self, power=125, pixel=649,  
+                        ms=99.92, repetitions=1, polygonswitch=False):
         '''
-        max travel laserdiode spot over 10 seconds
-        if polygon moves
+        max travel laserdiode spot, polygon enabled
+
+        :param power: laser power
+        :param pixel: pixel number
+        :param ms: exposure time camera in miliseconds
+        :param repetitions: number of repetitions
+        :param polygonswich: turn on/off polygon each iteration 
         '''
-        pass
+        line = np.zeros(self.bytesinline)
+        line[pixel//8] = 1 >> pixel%8
+        fourlines = list(line) + self.bytesinline*3*[0]
+        self.set_laser_power(power)
+        self.camera.set_exposure(ms)
+        if not polygonswitch:
+            self.enable_scanhead()
+        positions = list()
+        axes = np.zeros(2)
+        for i in range(0, repetitions):
+            if polygonswitch:
+                self.enable_scanhead()
+            spotinfo = self.expose(np.array(fourlines*160), takepicture = True)
+            positions.append(spotinfo['position'])
+            axes += spotinfo['axes']
+            if polygonswitch:
+                self.disable_scanhead()
+
+        return axes/repetitions, self.max_distance(positions)
 
 
     def max_distance(self, lst):
@@ -72,7 +98,3 @@ class Calibrator(Machine):
 
         return {'distance': pow(max_square_distance, 0.5),
                 'pair': max_pair}
-
-
-
-

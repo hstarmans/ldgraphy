@@ -54,11 +54,15 @@ class Camera:
         return self.socket.recv_pyobj()
 
 
-    def get_spotinfo(self):
+    def get_spotinfo(self, wait=True):
         '''
         return spotsize and position in dictionary
         '''
         self.socket.send_string('get_spotinfo()')
+        if wait:
+            return self.socket.recv_pyobj()
+    
+    def get_answer(self):
         return self.socket.recv_pyobj()
 
 
@@ -66,7 +70,7 @@ class Machine:
     def __init__(self, camera = False):
         self.position = [0, 0]
         self.steps_per_mm = 76.2
-        self.pixelsinline = 171
+        self.bytesinline = 171
         
         currentdir = dirname(realpath(__file__))
         self.bin_folder = join(currentdir, 'binaries')
@@ -232,7 +236,7 @@ class Machine:
                 self.position[1] = 0
                 self.move([self.position[0], 10], 4)
                 self.position[1] = 0
-    
+
 
     def move(self, target_position, speed = 2):
         '''
@@ -265,7 +269,7 @@ class Machine:
 
 
         self.position = target_position
-    
+
 
     def enable_scanhead(self):
         '''
@@ -277,7 +281,7 @@ class Machine:
         self.pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
         self.pruss.core0.load(join(self.bin_folder, './stabilizer.bin'))
         # flush memory, in new version of Py-UIO there is a function to do this
-        self.pruss.core0.dram.write([0]*self.pixelsinline*8+[0]*5)
+        self.pruss.core0.dram.write([0]*self.bytesinline*8+[0]*5)
         self.pruss.core0.run()
 
 
@@ -286,7 +290,7 @@ class Machine:
         receives command at given offset, if byte is None
         start to look for first possible CMD_EMPTY byte
         '''
-        SCANLINE_DATA_SIZE = self.pixelsinline
+        SCANLINE_DATA_SIZE = self.bytesinline
         SCANLINE_HEADER_SIZE = 1
         START_RINGBUFFER = 1
         QUEUE_LEN = 8
@@ -336,8 +340,8 @@ class Machine:
         self.pruss.core0.dram.write(data, offset = byte)
         while not self.pruss.core0.halted:
             pass
-        
-    
+
+
     def error_received(self):
         '''
         prints errors received and returns error index
@@ -355,8 +359,8 @@ class Machine:
                 print("Error, error out of index")
         return error_index
 
-    
-    def expose(self, line_data, direction, multiplier = 1, move = False, takepicture = False):
+
+    def expose(self, line_data, direction = True, multiplier = 1, move = False, takepicture = False):
         '''
         expose given line_data to substrate in given direction
         each line is exposed multiplier times.
@@ -370,8 +374,9 @@ class Machine:
         :param takepicture; if enabled takes picture
         '''
         QUEUE_LEN = 8
-        if (len(line_data) < QUEUE_LEN * self.pixelsinline 
-                or len(line_data) % self.pixelsinline):
+        if (len(line_data) < QUEUE_LEN * self.bytesinline 
+                or len(line_data) % self.bytesinline
+    ):
             raise Exception('Data invalid, should be longer than ringbuffer.')
         if (line_data.max() < 1 or line_data.max() > 255):
             raise Exception('Data invalid, values out of range.')
@@ -390,8 +395,10 @@ class Machine:
         line = 0
         while counter < QUEUE_LEN:
             extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA']]
-            extra_data += list(line_data[line*self.pixelsinline:
-                (line+1)*self.pixelsinline])
+            extra_data += list(line_data[line*self.bytesinline
+:
+                (line+1)*self.bytesinline
+    ])
             counter += 1
             if multiplier > 1:
                 null_data = deepcopy(extra_data)
@@ -404,14 +411,14 @@ class Machine:
             counter += multiplier-1
             line += 1
 
-        if len(write_data) == 1 + QUEUE_LEN*(1 + self.pixelsinline):
+        if len(write_data) == 1 + QUEUE_LEN*(1 + self.bytesinline):
             self.pruss.core0.dram.write(write_data)
         else:
             print(len(write_data))
             raise Exception('Preparation data incorrect')
         
         
-        SCANLINE_DATA_SIZE = self.pixelsinline
+        SCANLINE_DATA_SIZE = self.bytesinline
         SCANLINE_HEADER_SIZE = 1
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         byte = START_RINGBUFFER = 1
@@ -422,24 +429,21 @@ class Machine:
             else:
                 self.receive_command(byte, True)
             extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
-            extra_data += list(line_data[(line-1)*self.pixelsinline:
-                (line)*self.pixelsinline])
+            extra_data += list(line_data[(line-1)*self.bytesinline:
+                (line)*self.bytesinline])
             self.pruss.core0.dram.write(extra_data, offset = byte)
             byte += SCANLINE_ITEM_SIZE
             if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                 byte = START_RINGBUFFER
 
-        for line in range(line, len(line_data)//self.pixelsinline):
+        for line in range(line, len(line_data)//self.bytesinline):
             if line == QUEUE_LEN:
-                print("hitting")
                 byte = self.receive_command(None)
-                print('byte set to {}'.format(byte))
             else:
                 self.receive_command(byte, True)
             if line == 0 and takepicture:
-                spotinfo = self.camera.get_spotinfo()
-            extra_data = list(line_data[line*self.pixelsinline
-                :(line+1)*self.pixelsinline])
+                self.camera.get_spotinfo(wait=False)
+            extra_data = list(line_data[line*self.bytesinline:(line+1)*self.bytesinline])
             write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA']] 
             + extra_data)
             self.pruss.core0.dram.write(write_data, offset = byte)
@@ -447,7 +451,7 @@ class Machine:
             if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                 byte = START_RINGBUFFER
             for counter in range(1, multiplier):
-                receive_command(byte)
+                self.receive_command(byte)
                 write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
                     ] + extra_data)
                 self.pruss.core0.dram.write(write_data, offset = byte)
@@ -456,7 +460,8 @@ class Machine:
                     byte = START_RINGBUFFER
         GPIO.output(self.pins['y_enable'], GPIO.HIGH) # motor off
 
+
         try:
-            return spotinfo
+            return self.camera.get_answer()
         except NameError:
             pass
