@@ -312,7 +312,7 @@ class Machine:
                 if byte > QUEUE_LEN * SCANLINE_DATA_SIZE:
                     byte = START_RINGBUFFER
                     count += 1
-                    if count > 10:
+                    if count > 10000:
                         raise Exception("Can't pick" + 
                                 " up with ongong scan")
             return byte
@@ -360,7 +360,8 @@ class Machine:
         return error_index
 
 
-    def expose(self, line_data, direction = True, multiplier = 1, move = False, takepicture = False):
+    def expose(self, line_data, direction = True,
+            multiplier = 1, move = False, takepicture = False):
         '''
         expose given line_data to substrate in given direction
         each line is exposed multiplier times.
@@ -375,9 +376,9 @@ class Machine:
         '''
         QUEUE_LEN = 8
         if (len(line_data) < QUEUE_LEN * self.bytesinline 
-                or len(line_data) % self.bytesinline
-    ):
-            raise Exception('Data invalid, should be longer than ringbuffer.')
+                or len(line_data) % self.bytesinline):
+            raise Exception('Data invalid,' + 
+                    'should be longer than ringbuffer.')
         if (line_data.max() < 1 or line_data.max() > 255):
             raise Exception('Data invalid, values out of range.')
         if move:
@@ -395,10 +396,8 @@ class Machine:
         line = 0
         while counter < QUEUE_LEN:
             extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA']]
-            extra_data += list(line_data[line*self.bytesinline
-:
-                (line+1)*self.bytesinline
-    ])
+            extra_data += list(line_data[line*self.bytesinline:
+                (line+1)*self.bytesinline])
             counter += 1
             if multiplier > 1:
                 null_data = deepcopy(extra_data)
@@ -436,14 +435,15 @@ class Machine:
             if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                 byte = START_RINGBUFFER
 
-        for line in range(line, len(line_data)//self.bytesinline):
-            if line == QUEUE_LEN:
+        for scanline in range(line, len(line_data)//self.bytesinline):
+            if scanline == QUEUE_LEN:
                 byte = self.receive_command(None)
             else:
                 self.receive_command(byte, True)
-            if line == 0 and takepicture:
+            if scanline == line and takepicture:
                 self.camera.get_spotinfo(wait=False)
-            extra_data = list(line_data[line*self.bytesinline:(line+1)*self.bytesinline])
+            extra_data = list(line_data[scanline*self.bytesinline
+                :(scanline+1)*self.bytesinline])
             write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA']] 
             + extra_data)
             self.pruss.core0.dram.write(write_data, offset = byte)
@@ -461,7 +461,5 @@ class Machine:
         GPIO.output(self.pins['y_enable'], GPIO.HIGH) # motor off
 
 
-        try:
+        if takepicture: 
             return self.camera.get_answer()
-        except NameError:
-            pass
