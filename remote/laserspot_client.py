@@ -39,6 +39,7 @@ class Cam:
         if self.cam.init():	
             raise Exception("Can't init camera")
         self.cam.alloc()
+        self.picnum = 0
 
     def __enter__(self):
         return self
@@ -72,15 +73,18 @@ def main():
     socket.connect('tcp://10.42.0.105:%s' % PORT)
     with Cam() as camera:
         camera.cam.set_pixelclock(20)
-
-
+        
         def set_exposure(ms):
             camera.cam.set_exposure(ms)
             return True
 
 
-        def get_spotinfo():
+        def get_spotinfo(debug=True):
             img = camera.take_picture()
+            if debug:
+                import cv2
+                camera.picnum += 1
+                cv2.imwrite(str(camera.picnum)+'.png', img)
             return spots.getellipse(img, pixelsize = 4.65)
 
 
