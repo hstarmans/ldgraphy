@@ -399,7 +399,7 @@ class Machine:
         # prep scanner by writing 8 empty lines to buffer
         write_data = [self.ERRORS.inv['ERROR_NONE']]
         empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]+[0]*self.bytesinline
-        write_data = empty_line*QUEUE_LEN
+        write_data += empty_line*QUEUE_LEN
         self.pruss.core0.dram.write(write_data)
         # receive current position
         byte = self.receive_command(None)
@@ -408,6 +408,7 @@ class Machine:
             if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                 byte = START_RINGBUFFER
                 break
+            self.pruss.core0.dram.write(empty_line, offset = byte) 
             self.receive_command(byte, True)
 
         for scanline in range(0, len(line_data)//self.bytesinline):
