@@ -283,6 +283,8 @@ class Machine:
         # flush memory, in new version of Py-UIO there is a function to do this
         self.pruss.core0.dram.write([0]*self.bytesinline*8+[0]*5)
         self.pruss.core0.run()
+        #TODO: add check polygon is enabled and stable
+        sleep(4)
 
 
     def receive_command(self, byte = None, check = False):
