@@ -49,8 +49,8 @@ class Calibrator(Machine):
         return axes/repetitions, self.max_distance(positions)
 
 
-    def check_laserspotmoving(self, power=125, pixel=649,  
-                        ms=70, repetitions=1, polygonswitch=False):
+    def check_laserspotmoving(self, power=100, pixel=649,  
+                        ms=15, repetitions=1, polygonswitch=False):
         '''
         max travel laserdiode spot, polygon enabled
 
@@ -65,25 +65,23 @@ class Calibrator(Machine):
         self.fourlines = list(self.line) + self.bytesinline*3*[0]
         self.set_laser_power(power)
         self.camera.set_exposure(ms)
-        if not polygonswitch:
-            self.enable_scanhead()
         positions = list()
+        print("Wating for enable to finish")
         axes = np.zeros(2)
         for i in range(0, repetitions):
             time.sleep(1)
             if polygonswitch:
+                print("Switching on polygon at switch true")
                 self.enable_scanhead()
             spotinfo = self.expose(np.array(self.fourlines*160),
                     takepicture = True)
             if not spotinfo:
-                print("Can't detect spots")
                 return
             positions.append(spotinfo['position'])
             axes += spotinfo['axes']
             if polygonswitch:
+                print("Switching off polygon at switch true")
                 self.disable_scanhead()
-        if not polygonswitch: 
-            self.disable_scanhead()
         return axes/repetitions, self.max_distance(positions)
 
 
