@@ -390,57 +390,28 @@ class Machine:
             GPIO.output(self.pins['y_dir'], GPIO.HIGH)
         else:
             GPIO.output(self.pins['y_dir'], GPIO.LOW)
-        # prep scanner by writing 8 lines to buffer
-        write_data = [self.ERRORS.inv['ERROR_NONE']] 
-        counter = 0
-        line = 0
-        while counter < QUEUE_LEN:
-            extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA']]
-            extra_data += list(line_data[line*self.bytesinline:
-                (line+1)*self.bytesinline])
-            counter += 1
-            if multiplier > 1:
-                null_data = deepcopy(extra_data)
-                #null_data[0] = self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
-                if counter+(multiplier-1) < QUEUE_LEN:
-                    extra_data += null_data*(multiplier-1)
-                else:
-                    extra_data += null_data*(QUEUE_LEN-counter)
-            write_data += extra_data
-            counter += multiplier-1
-            line += 1
-
-        if len(write_data) == 1 + QUEUE_LEN*(1 + self.bytesinline):
-            self.pruss.core0.dram.write(write_data)
-        else:
-            print(len(write_data))
-            raise Exception('Preparation data incorrect')
-        
-        
         SCANLINE_DATA_SIZE = self.bytesinline
         SCANLINE_HEADER_SIZE = 1
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         byte = START_RINGBUFFER = 1
-        
-        for counter in range(QUEUE_LEN, line-1+multiplier):
-            if counter == QUEUE_LEN:
-                byte = self.receive_command(None)
-            else:
-                self.receive_command(byte, True)
-            extra_data = [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
-            extra_data += list(line_data[(line-1)*self.bytesinline:
-                (line)*self.bytesinline])
-            self.pruss.core0.dram.write(extra_data, offset = byte)
+        # prep scanner by writing 8 empty lines to buffer
+        write_data = [self.ERRORS.inv['ERROR_NONE']]
+        empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']+[0]*self.bytesinline
+        write_data = empty_line*QUEUE_LEN
+        self.pruss.core0.dram.write(write_data)
+        # receive current position
+        byte = self.receive_command(None)
+        while byte != START_RINGBUFFER:
             byte += SCANLINE_ITEM_SIZE
             if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                 byte = START_RINGBUFFER
+                break
+            self.receive_command(byte, True)
 
-        for scanline in range(line, len(line_data)//self.bytesinline):
-            if scanline == QUEUE_LEN:
-                byte = self.receive_command(None)
-            else:
-                self.receive_command(byte, True)
-            if scanline == line and takepicture:
+        for scanline in range(0, len(line_data)//self.bytesinline):
+            self.receive_command(byte, True)
+            # you start the picture where the laser is just off again
+            if scanline == QUEUE_LEN and takepicture:
                 self.camera.get_spotinfo(wait=False)
             extra_data = list(line_data[scanline*self.bytesinline
                 :(scanline+1)*self.bytesinline])
