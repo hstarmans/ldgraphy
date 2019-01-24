@@ -70,7 +70,7 @@ class Machine:
     def __init__(self, camera = False):
         self.position = [0, 0]
         self.steps_per_mm = 76.2
-        self.bytesinline = 171
+        self.bytesinline = 937
         
         currentdir = dirname(realpath(__file__))
         self.bin_folder = join(currentdir, 'binaries')
@@ -284,6 +284,7 @@ class Machine:
         self.pruss.core0.dram.write([0]*self.bytesinline*8+[0]*5)
         self.pruss.core0.run()
         #TODO: add check polygon is enabled and stable
+        # if you can't disable does not work
         sleep(4)
 
 
@@ -369,13 +370,15 @@ class Machine:
         each line is exposed multiplier times.
         returns result of takepicture
 
-        :param line_data; data to write to scanner, 1D binary numpy array
+        :param line_data; data to write to scanner, uint8
         :param multiplier; amount of times a line is exposed
         :param direction; direction of exposure,
                           True is postive y (away from home)
         :param move; if enabled moves stage
         :param takepicture; if enabled takes picture
         '''
+        if line_date.dtype is not np.uint8:
+            raise Exception('Dtype must be uint8')
         QUEUE_LEN = 8
         if (len(line_data) < QUEUE_LEN * self.bytesinline 
                 or len(line_data) % self.bytesinline):

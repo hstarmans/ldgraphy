@@ -34,29 +34,29 @@
 
 
 #define CPU_SPEED  200000000       // Hz  PRU is 200 MHz
-#define TICK_DELAY 500            // CPU cycles between each loop         
+#define TICK_DELAY 100            // CPU cycles between each loop         
 
 
 // Each mirror segment is this number of pixel ticks long (only the first
 // 8*SCANLINE_DATA_SIZE are filled with pixels, the rest is dead part of the
 // segment).
 
-#define TICKS_PER_MIRROR_SEGMENT 2500
-#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/100
-#define TICKS_START 875 // start exposure at 20 percent
+#define TICKS_PER_MIRROR_SEGMENT 12500
+#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/3300
+#define TICKS_START 4375 // start exposure at 20 percent
 #define FACETS 4
 
 // The data per segment is sent in a bit-array. 
 #define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
-#define SCANLINE_DATA_SIZE 171   
+#define SCANLINE_DATA_SIZE 937   
 #define SCANLINE_ITEM_SIZE (SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE)
 #define QUEUE_LEN 8              // should be multiple of facets, to ensure 1 on 1 facet relation
 #define ERROR_RESULT_POS 0       // byte 0 = error
 #define START_RINGBUFFER 1       // byte 1 ... lines
 
 
-#define SPINUP_TICKS 600000 // 1.5 seconds
+#define SPINUP_TICKS 3000000 // 1.5 seconds
 
-#define MAX_WAIT_STABLE_TICKS 450000 // 1.125 seconds, laser on waiting for sync error if expires
+#define MAX_WAIT_STABLE_TICKS 2250000 // 1.125 seconds, laser on waiting for sync error if expires
 
 #endif // LASER_SCRIBE_CONSTANTS_H
