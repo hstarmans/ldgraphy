@@ -27,7 +27,7 @@ ERRORS += ['ERROR_TIME_OVERRUN']
 ERRORS = bidict(enumerate(ERRORS))
 RPM = 2400
 FACETS = 4
-SCANLINE_DATA_SIZE = 171
+SCANLINE_DATA_SIZE = 937 
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
 QUEUE_LEN = 8
@@ -37,8 +37,10 @@ START_RINGBUFFER = 5
 # end of laser_scribe-constants.h
 
 # line
-data_byte = [int('11111111', 2)]  # left bit, bit 7 read out first
-LINE = data_byte*SCANLINE_DATA_SIZE
+data_byte = [int('10000000', 2)]*1+[int('00000000',2)]*15  # left bit, bit 7 read out first
+LINE = data_byte*(SCANLINE_DATA_SIZE//16)+SCANLINE_DATA_SIZE%16*[int('00000000',2)]
+print("length line is"+str(len(LINE)))
+
 DURATION = 100  # seconds
 TOTAL_LINES = RPM*DURATION/60*FACETS
 

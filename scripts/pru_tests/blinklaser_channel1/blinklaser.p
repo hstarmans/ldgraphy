@@ -4,8 +4,9 @@
 #define INS_PER_US   200
 #define INS_PER_DELAY_LOOP 2
 ; set up 3 second delay
-#define DELAY   3000 * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
-
+; 10 ms ==> 100e3 Hertz
+#define DELAY  100 
+#define TIMES 3000000000 
 
 START:
     LBCO r0, C4, 4, 4				
@@ -13,7 +14,7 @@ START:
     SBCO r0, C4, 4, 4	
 
 
-    MOV r1, 3 ; pulse 3 times
+    MOV r1, TIMES ; pulse 3 times
 BLINK:
     SET r30.t1   ; LASER ON
     MOV r0, DELAY
