@@ -10,3 +10,5 @@ ldgraphy
 *.png
 *pycache*
 *.log
+*.bmp
+*.zip

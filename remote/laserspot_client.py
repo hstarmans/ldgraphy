@@ -70,7 +70,9 @@ class Cam:
 def main():
     context = zmq.Context()
     socket = context.socket(zmq.PAIR)
-    socket.connect('tcp://10.42.0.105:%s' % PORT)
+    address = '10.42.0.192'
+    print('Using address ' + address)
+    socket.connect('tcp://'+address+':%s' % PORT)
     with Cam() as camera:
         camera.cam.set_pixelclock(20)
         
