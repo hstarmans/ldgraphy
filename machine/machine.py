@@ -377,7 +377,7 @@ class Machine:
         :param move; if enabled moves stage
         :param takepicture; if enabled takes picture
         '''
-        if line_date.dtype is not np.uint8:
+        if line_data.dtype != np.uint8:
             raise Exception('Dtype must be uint8')
         QUEUE_LEN = 8
         if (len(line_data) < QUEUE_LEN * self.bytesinline 
