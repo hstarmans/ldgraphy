@@ -28,4 +28,4 @@ print("END_OF_DATA_WAIT_TICKS {}".format(END_OF_DATA_WAIT_TICKS))
 
 SLED_SPEED = 1/STEPSPERMM*(RPM*FACETS/60)
 print("Sled speed is fixed at {} mm/s".format(SLED_SPEED))
-
+print("Laser freq is {} Hz".format(200e6/TICK_DELAY))
