@@ -1,4 +1,5 @@
 '''
+#NOTE: DOES NOT RUN ON BEAGLEBONE; blows memory
 @company: Hexastorm
 @author: Rik Starmans
 '''
@@ -25,7 +26,7 @@ class Interpolator:
         # PARAMETERS
         self.tiltangle = np.radians(90)   # angle [radians], for a definition see figure 7
                                           # https://reprap.org/wiki/Transparent_Polygon_Scanning
-        self.laserfrequency = 400e3       # the laser frequency [Hz]
+        self.laserfrequency = 2e6         # the laser frequency [Hz]
         self.rotationfrequency = 2400/60  # rotation frequency polygon [Hz]
         self.facets = 4                   # number of facets
         self.inradius = 15                # inradius polygon [mm]
@@ -37,9 +38,9 @@ class Interpolator:
         # NOTE: sample below Nyquist criterion
         #       you first sample the image, you then again sample the sampled image 
         self.samplegridsize = 0.015       # height/width of the sample gridth [mm]
-        self.stagespeed = 2.0997375328             # mm/s
-        self.startpixel = 800             # pixel determine via camera
-        self.pixelsinline = 171*8         # number of pixels in a line
+        self.stagespeed = 2.0997375328     # mm/s
+        self.startpixel = 3998             # pixel determine via camera
+        self.pixelsinline = 563*8         # number of pixels in a line
         
         currentdir = os.path.dirname(os.path.realpath(__file__))
         self.debug_folder = os.path.join(currentdir, 'debug')
@@ -52,7 +53,7 @@ class Interpolator:
         '''
         psppoint = 0.3527777778 # post script pixel in mm
         tmp = Image.open(url)
-        y_size, x_size = [i*psppoint for i in tmp.size]
+        x_size, y_size = [i*psppoint for i in tmp.size]
         if x_size > self.pltfxsize or y_size > self.pltfysize:
             raise Exception('Object does not fit on platform')
         #NOTE: this is only a crude approximation
@@ -125,6 +126,7 @@ class Interpolator:
 
         assumes the line starts at the positive plane 
         '''
+        #TODO: you can do it with 16 bit if you use your own unit and don't rely on float
         if not self.sampleysize or not self.samplexsize:
             raise Exception('Sampleysize or samplexsize are set to zero.')
         if self.fxpos(0) < 0 or self.fxpos(self.pixelsinline-1) > 0:
@@ -168,7 +170,7 @@ class Interpolator:
         # interpolation is linear, but in the end you convert to binary so can be converted to int as well.
         xpos = np.array(xpos)
         ypos = np.array(ypos)
-        ids = np.concatenate(([ypos], [xpos]))
+        ids = np.concatenate(([xpos], [ypos]))
         return ids
 
 
@@ -220,8 +222,8 @@ class Interpolator:
         #      - your y step is greater than sample size so you see lines, this will not be there in
         #        reality as you spot is larger
         ids = self.createcoordinates()
-        xcor = np.array(ids[1, ::step]).astype(np.int32)
-        ycor = np.array(ids[0, ::step]).astype(np.int32)
+        xcor = np.array(ids[0, ::step]).astype(np.int32)
+        ycor = np.array(ids[1, ::step]).astype(np.int32)
         # x and y cannot be negative
         if xcor.min()< 0:
             print('XCOR negative, weird!')
