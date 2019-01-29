@@ -70,7 +70,7 @@ class Machine:
     def __init__(self, camera = False):
         self.position = [0, 0]
         self.steps_per_mm = 76.2
-        self.bytesinline = 937
+        self.bytesinline = 790 
         
         currentdir = dirname(realpath(__file__))
         self.bin_folder = join(currentdir, 'binaries')
@@ -91,8 +91,6 @@ class Machine:
 
         The laser power can be changed in two ways.
         First by using one or two channels. Second by setting the DAC value.
-        Here the DAC value is set.
-        :param value: laser power
         '''
         if value < 0 or value > 255:
             raise Exception('Invalid laser power')
