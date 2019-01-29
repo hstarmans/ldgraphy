@@ -24,27 +24,37 @@ class Interpolator:
 
     def __init__(self):
         # PARAMETERS
-        self.tiltangle = np.radians(90)   # angle [radians], for a definition see figure 7
-                                          # https://reprap.org/wiki/Transparent_Polygon_Scanning
-        self.laserfrequency = 2e6         # the laser frequency [Hz]
-        self.rotationfrequency = 2400/60  # rotation frequency polygon [Hz]
-        self.facets = 4                   # number of facets
-        self.inradius = 15                # inradius polygon [mm]
-        self.n = 1.49                     # refractive index
-        self.pltfxsize = 200              # platform size scanning direction [mm]
-        self.pltfysize = 200              # platform size stacking direction [mm]
-        self.samplexsize = 0              # sample size scanning direction [mm]
-        self.sampleysize = 0              # sample size stacking direction [mm]
+        self.tiltangle = np.radians(90)          # angle [radians], for a definition see figure 7
+                                                 # https://reprap.org/wiki/Transparent_Polygon_Scanning
+        self.laserfrequency = 2e6                # the laser frequency [Hz] 
+        self.rotationfrequency = 2400/60         # rotation frequency polygon [Hz]
+        self.facets = 4                          # number of facets
+        self.inradius = 15                       # inradius polygon [mm]
+        self.n = 1.49                            # refractive index
+        self.pltfxsize = 200                     # platform size scanning direction [mm]
+        self.pltfysize = 200                     # platform size stacking direction [mm]
+        self.samplexsize = 0                     # sample size scanning direction [mm]
+        self.sampleysize = 0                     # sample size stacking direction [mm]
         # NOTE: sample below Nyquist criterion
         #       you first sample the image, you then again sample the sampled image 
-        self.samplegridsize = 0.015       # height/width of the sample gridth [mm]
-        self.stagespeed = 2.0997375328     # mm/s
-        self.startpixel = 3998             # pixel determine via camera
-        self.pixelsinline = 563*8         # number of pixels in a line
-        
+        self.samplegridsize = 0.015              # height/width of the sample gridth [mm]
+        self.stagespeed = 2.0997375328           # mm/s
+        self.startpixel = 3467                   # pixel determine via camera 
+        self.pixelsinline = 790*8                # number of pixels in a line [new 785]
+        self.downsample_factor = 5               # each pixel is repeated five times, to speed up interpolation
+        self.downsample(factor = self.downsample_factor)       
         currentdir = os.path.dirname(os.path.realpath(__file__))
         self.debug_folder = os.path.join(currentdir, 'debug')
 
+
+    def downsample(self, factor = 5):
+        ''' downsamples constants
+        '''
+        self.laserfrequency = round(self.laserfrequency/factor)
+        self.startpixel = round(self.startpixel/factor)
+        self.pixelsinline = round(self.pixelsinline/factor)
+        if self.pixelsinline%8:
+            raise Exception('Remainder not zero {}'.format(self.pixelsinline%8))
 
     def pstoarray(self, url):
         '''converts postscript file to an array
@@ -126,7 +136,6 @@ class Interpolator:
 
         assumes the line starts at the positive plane 
         '''
-        #TODO: you can do it with 16 bit if you use your own unit and don't rely on float
         if not self.sampleysize or not self.samplexsize:
             raise Exception('Sampleysize or samplexsize are set to zero.')
         if self.fxpos(0) < 0 or self.fxpos(self.pixelsinline-1) > 0:
@@ -136,40 +145,43 @@ class Interpolator:
         facets_inlane = math.ceil(self.rotationfrequency * self.facets * (self.sampleysize/self.stagespeed))
         print("The lanewidth is {}".format(lanewidth))
         print("The facets in lane are {}".format(facets_inlane))
-        
-        
         # single facet
-        vfxpos = np.vectorize(self.fxpos)
-        vfypos = np.vectorize(self.fypos)
+        vfxpos = np.vectorize(self.fxpos, otypes=[np.int16])
+        vfypos = np.vectorize(self.fypos, otypes=[np.int16])
         xstart = abs(self.fxpos(self.pixelsinline-1)*self.samplegridsize)
         xpos_facet = vfxpos(range(0, self.pixelsinline), xstart)
-        # TODO: you still don't account for ystart
+        # TODO: you still don't account for ystart (you are moving in the y, so if you start at the edge you miss something)
         ypos_forwardfacet = vfypos(range(0, self.pixelsinline), True)
         ypos_backwardfacet = vfypos(range(0, self.pixelsinline), False)
         # single lane
-        xpos_lane = xpos_facet.tolist() * facets_inlane
-        ypos_forwardlane = []
-        ypos_backwardlane = []
+        xpos_lane = np.tile(xpos_facet, facets_inlane)
+        ypos_forwardlane = np.array([],dtype=np.int16)
+        ypos_backwardlane = np.array([],dtype=np.int16)
+        #TODO: this part is slow and looks suboptimal
         for facet in range(0, facets_inlane):
-            ypos_forwardtemp = ypos_forwardfacet + (facet*self.stagespeed)/(self.facets*self.rotationfrequency*self.samplegridsize)
-            ypos_backwardtemp = ypos_backwardfacet + ((facets_inlane-facet)*self.stagespeed)/(self.facets*self.rotationfrequency*self.samplegridsize)
-            ypos_forwardlane += ypos_forwardtemp.tolist()
-            ypos_backwardlane += ypos_backwardtemp.tolist()
+            ypos_forwardtemp = ypos_forwardfacet + round(
+                (facet*self.stagespeed)/(self.facets*self.rotationfrequency*self.samplegridsize))
+            ypos_backwardtemp = ypos_backwardfacet + round(
+            ((facets_inlane-facet)*self.stagespeed)/(self.facets*self.rotationfrequency*self.samplegridsize))
+            ypos_forwardlane = np.concatenate((ypos_forwardlane, ypos_forwardtemp))
+            ypos_backwardlane = np.concatenate((ypos_backwardlane, ypos_backwardtemp))
+        # per lane; 5000 (pixels per facet) / 5 (samplefactor) 
+        #    * (200 mm/0.015 mm (resolution)*2 (16 bit = 2byte)) )/1E6 = 40 MB
+        # TODO: slice per lane so it fits on beaglebone, you have on the fly slicing 
         # all lanes
-        xpos_lane = np.array(xpos_lane)
-        xpos = []
-        ypos = []
+        xpos = np.array([], dtype=np.int16)
+        ypos = np.array([], dtype=np.int16)
         for lane in range(0, lanes):
-            xpos_temp = xpos_lane + lane * (self.fxpos(0)-self.fxpos(self.pixelsinline-1))
+            #TODO: why is this force needed?
+            xoffset= int(round(lane * (self.fxpos(0)-self.fxpos(self.pixelsinline-1))))
+            xpos_temp = xpos_lane + xoffset
             if lane % 2 == 1:
                 ypos_temp = ypos_backwardlane
             else:
                 ypos_temp = ypos_forwardlane
-            xpos += xpos_temp.tolist()
-            ypos += ypos_temp
-        # interpolation is linear, but in the end you convert to binary so can be converted to int as well.
-        xpos = np.array(xpos)
-        ypos = np.array(ypos)
+            xpos = np.concatenate((xpos, xpos_temp)) 
+            ypos = np.concatenate((ypos, ypos_temp))
+        # interpolation can be linear, however int are used to save space
         ids = np.concatenate(([xpos], [ypos]))
         return ids
 
@@ -205,6 +217,7 @@ class Interpolator:
         if ptrn.min()<0 or ptrn.max()>1:
             raise Exception('This is not a bit list.')
         ptrn = np.logical_not(ptrn)
+        ptrn = np.repeat(ptrn, self.downsample_factor)
         ptrn = np.packbits(ptrn)
         return ptrn
 
@@ -218,22 +231,23 @@ class Interpolator:
         :param step: pixel step, can be used to lower the number of pixels that are plotted 
         :param filename: filename to store pattern
         '''
-        #TODO: - plot with real pixels
-        #      - your y step is greater than sample size so you see lines, this will not be there in
+        #TODO: - plot with real laser spots --> convolution?
+        #      - your y-step is greater than sample size so you see lines, this will not be there in
         #        reality as you spot is larger
         ids = self.createcoordinates()
-        xcor = np.array(ids[0, ::step]).astype(np.int32)
-        ycor = np.array(ids[1, ::step]).astype(np.int32)
-        # x and y cannot be negative
+        ids = np.repeat(ids, self.downsample_factor, axis = 1)
+        # repeat adden
+        xcor = ids[0, ::step]
+        ycor = ids[1, ::step]
         if xcor.min()< 0:
             print('XCOR negative, weird!')
             xcor += abs(xcor.min())
         if ycor.min()< 0:
             print('YCOR negative, weird!')
             ycor += abs(ycor.min())
-        arr = np.zeros((ycor.max() + 1, xcor.max() + 1), dtype=np.uint8)
+        arr = np.zeros((xcor.max() + 1, ycor.max() + 1), dtype=np.uint8)
         ptrn = np.unpackbits(ptrn)
-        arr[ycor[:], xcor[:]] = ptrn[0 : len(ptrn): step]
+        arr[xcor[:], ycor[:]] = ptrn[0 : len(ptrn): step]
         arr = arr * 255
         img = Image.fromarray(arr)
         img.save(os.path.join(self.debug_folder, filename + '.png'))
@@ -268,7 +282,8 @@ if __name__ == "__main__":
     dir_path = os.path.dirname(os.path.realpath(__file__))
     url = os.path.join(dir_path, 'test-patterns', 'line-resolution-test.ps')
     ptrn = interpolator.patternfile(url)
+    #TODO: make debug dir
     interpolator.writebin(ptrn, "test.bin")
     pat = interpolator.readbin("test.bin")
     print("The shape of the pattern is {}".format(pat.shape))
-    interpolator.plotptrn(pat, 1)
+    interpolator.plotptrn(ptrn = pat, step = 1)

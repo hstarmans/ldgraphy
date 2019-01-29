@@ -48,7 +48,7 @@
 
 // The data per segment is sent in a bit-array. 
 #define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
-#define SCANLINE_DATA_SIZE 563   
+#define SCANLINE_DATA_SIZE 790   
 #define SCANLINE_ITEM_SIZE (SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE)
 #define QUEUE_LEN 8              // should be multiple of facets, to ensure 1 on 1 facet relation
 #define ERROR_RESULT_POS 0       // byte 0 = error
