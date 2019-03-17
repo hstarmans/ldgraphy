@@ -5,21 +5,23 @@ http://www.hexastorm.com/
 
 A process known as Laser Direct Imaging. <br>
 
-<img src="https://www.hexastorm.com/static/box.jpg" align="center" height="300"/>
+<img src="https://www.hexastorm.com/static/image1.jpg" align="center" height="300"/>
 
-The code is based upon [LDGraphy](http://ldgraphy.org/).
+The code is based upon [LDGraphy](http://ldgraphy.org/). It was developed with the [eXtreme Go Horse (XGH) methodology](https://gist.github.com/banaslee/4147370).
 
 
-The BOM of the scan head is in the order of $200 including the Beaglebone Green.
+The BOM of the scan head is in the order of $400 including the Beaglebone Green.
 
   * 500mW 405nm laser ($30)
   * Commonly available polygon mirror scanner (from laser printers) ($20)
   * Beaglebone Black/Green to control it all (using the PRU to generate precise
-    timings for motors and laser) ($40)
+    timings for motors and laser) ($50)
   * quartz optical window, 2 mm thick, 30x30 mm ($55)
   * Photo-diode to determine start-of-line (as the polygon mirrors have
     slightly different long faces and also phase-drift over time) (BPW34-B) ($5)
-  * Hexastorm hat ($30)
+  * Hexastorm hat ($50)
+  * cylinder lens pair ($120)
+  * triangular prism ($50)
 
 The Hexastorm hat is not for sale and has to be produced manually. 
 The prism has to be glued on top of the polygon motor.
@@ -28,7 +30,7 @@ The frame was donated by [Felixprinters](https://www.felixprinters.com).
 
 Work in Progress
 ----------------
-The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3.
+The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3. A resolution below 100 micrometers can be obtained.
 The stepper motors can be moved and homed via the limit switches.
 The scanhad is mounted on a frame. The power of the laser can be set via a 
 digital potentiometer.
