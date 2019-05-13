@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hexastorm - http://www.hexastorm.com
+ * Copyright (C) 2019  Hexastorm - https://www.hexastorm.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,50 +13,75 @@
 
 	/* identification */
 	part-number = "firestarter";
-	version = "0.1";
+	version = "0.2";
         exclusive-use =
-		"P9.12",
-		"P9.14",
-		"P9.15",
-		"P9.16",
-		"P9.19",
-		"P9.20",
-		"P9.24",	// i2c1_sda
-		"P9.25",
-		"P9.26",	// i2c1_scl
-		"P9.27",
-		"P9.28",
-		"P9.29",
-		"P9.30",
-		"P9.41",
+	        "P8.11",        // y-enable
+		"P8.12",        // y-step
+		"P8.13",        // fan-pwm
+		"P8.14",        // SPIO_CSZ
+		"P8.15",        // y-dir
+		"P8.16",        // z-step
+		"P8.17",        // z-dir
+		"P8.18",        // z-enable
+		"P8.19",        // spindle-pwm
 
-                "i2c1"; // hardware ip used0
+		"P9.11",        // spio-csy
+		"P9.12",        // x-enable
+		"P9.14",        // y-po
+		"P9.15",        // x-po
+		"P9.16",        // z-po
+		"P9.17",        // spio-csx
+		"P9.18",        // spio-di
+		"P9.19",        // i2c2_scl
+		"P9.20",        // i2c2_sda
+		"P9.21",        // spio-do
+		"P9.22",        // spio-scl
+		"P9.23",        // poly-en
+		"P9.24",	// ph-diode
+		"P9.25",        // ic-hb-pwm1
+		"P9.26",	// poly-ready
+		"P9.27",        // ic-hb-pwm2
+		"P9.30",        // poly-pwm
+		"P9.41",        // x-step
+		"P9.42",        // x-dir
+
+                "i2c2"; // hardware ip used
 
 	fragment@0 {
 		target = <&am33xx_pinmux>;
 		__overlay__ {
 
-		        i2c1_pins: pinmux_i2c1_pins {
+		        i2c2_pins: pinmux_i2c2_pins {
 			        pinctrl-single,pins = <
-		                        0x184 0x73  /* P9_26 I2C1-SCL */
-					0x180 0x73  /* P9_24 I2C1-SDA */ 
+		                        0x17c 0x73  /* P9_19 I2C2-SCL */
+					0x178 0x73  /* P9_20 I2C1-SDA */ 
 		                >;
 	                };
 			pinctrl_test: pinctrl_test_0_pins {
 				pinctrl-single,pins = <
-					0x1ac 0x05  /* P9_25 Polygon Enable */
-					0x1a4 0x05  /* P9_27 Polygon PWM    */
-                                        0x194 0x05  /* P9_29 Laserdiode PWM1*/
-					0x190 0x05  /* P9_31 Laserdiode PWM2*/
-				        0x1a8 0x26  /* P9_41 Photodiode     */
-                                        0x178 0x07  /* P9_20 Y-dir          */
-                                        0x078 0x07  /* P9_12 X-dir          */
-					0x19c 0x05  /* P9_28 X-step         */
-					0x198 0x05  /* P9_30 Y-step         */
-                                        0x048 0x27  /* P9_14 X-endstop      */
-					0x04c 0x27  /* P9_16 Y-endstop      */
-					0x040 0x07  /* P9_15 X-enable       */
-					0x17c 0x07  /* P9_19 Y-enable       */
+				        0x034 0x07  /* P8_11 Y-enable       */
+					0x030 0x06  /* P8_12 Y-step         */
+					0x024 0x04  /* P8_13 FAN_PWM        */
+					0x028 0x07  /* P8_14 SPIO_CSZ       */
+					0x03c 0x07  /* P8_15 Y-dir          */
+					0x038 0x07  /* P8_16 Z-step         */
+					0x02c 0x07  /* P8_17 Z-dir          */
+					0x08c 0x07  /* P8_18 Z_enable       */
+					0x020 0x04  /* P8_19 SPINDLE_PWM    */
+				        0x070 0x07  /* P9_11 spio-csy       */
+                                        0x078 0x07  /* P9_12 X-enable       */
+                                        0x048 0x27  /* P9_14 y-po           */
+					0x040 0x27  /* P9_15 X-po           */
+					0x04c 0x27  /* P9_16 z-po           */
+					0x15c 0x07  /* P9_17 spio-csx       */
+					0x044 0x07  /* P9_23 poly_en        */
+					0x184 0x26  /* P9_24 ph-diode       */
+					0x1ac 0x05  /* P9_25 ic-hb-pwm1     */
+					0x180 0x07  /* P9_26 poly-ready     */
+					0x1a4 0x05  /* P9_27 ic-hb-pwm2     */
+					0x198 0x05  /* P9_30 poly-pwm       */
+				        0x1a8 0x05  /* P9_41 x-step         */
+					0x1a0 0x05  /* P9_42 x-dir          */
 				>;
 			};
 		};
@@ -78,14 +103,8 @@
 
 	fragment@2 {
 		target = <&i2c1>;
-
 		__overlay__ {
-		        pinctrl-0 = <&i2c1_pins>;
-                        pinctrl-names = "default";
-		        clock-frequency = <100000>;
-		        status = "okay";
-			#address-cells = <1>;
-			#size-cells = <0>;
+			status = "disabled";
 		};
 	};
 
@@ -93,7 +112,12 @@
         fragment@3 {
 		target = <&i2c2>;
 		__overlay__ {
-			status = "disabled";
+			pinctrl-0 = <&i2c2_pins>;
+			pinctr_names = "default";
+			clock-frequency = <100000>;
+			status = "okay";
+			#address-cells = <1>;
+			#size-cells = <0>;
 		};
         };
 
