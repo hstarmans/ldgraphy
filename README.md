@@ -7,7 +7,7 @@ A process known as Laser Direct Imaging. <br>
 
 <img src="https://www.hexastorm.com/static/image1.jpg" align="center" height="300"/>
 
-The code is based upon [LDGraphy](http://ldgraphy.org/). It was developed with the [eXtreme Go Horse (XGH) methodology](https://gist.github.com/banaslee/4147370).
+The code is based upon [LDGraphy](http://ldgraphy.org/). 
 
 
 The BOM of the scan head is in the order of $400 including the Beaglebone Green.
@@ -30,10 +30,12 @@ The frame was donated by [Felixprinters](https://www.felixprinters.com).
 
 Work in Progress
 ----------------
-The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3. A resolution below 100 micrometers can be obtained.
-The stepper motors can be moved and homed via the limit switches.
+The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3. A resolution below 100 micrometers can be obtained. The stepper motors can be moved and homed via the limit switches.
 The scanhad is mounted on a frame. The power of the laser can be set via a 
 digital potentiometer.
+The firmware is currently under change. The beaglebone cape is ported from v0.1 to v0.2 [Firestarterrepo](https://github.com/hstarmans/firestarter).
+
+
 
 Image used
 --------------
