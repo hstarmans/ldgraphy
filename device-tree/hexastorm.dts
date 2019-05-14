@@ -43,20 +43,11 @@
 		"P9.27",        // ic-hb-pwm2
 		"P9.30",        // poly-pwm
 		"P9.41",        // x-step
-		"P9.42",        // x-dir
-
-                "i2c2"; // hardware ip used
+		"P9.42";        // x-dir
 
 	fragment@0 {
 		target = <&am33xx_pinmux>;
 		__overlay__ {
-
-		        i2c2_pins: pinmux_i2c2_pins {
-			        pinctrl-single,pins = <
-		                        0x17c 0x73  /* P9_19 I2C2-SCL */
-					0x178 0x73  /* P9_20 I2C1-SDA */ 
-		                >;
-	                };
 			pinctrl_test: pinctrl_test_0_pins {
 				pinctrl-single,pins = <
 				        0x034 0x07  /* P8_11 Y-enable       */
@@ -100,25 +91,4 @@
 		};
 
 	};
-
-	fragment@2 {
-		target = <&i2c1>;
-		__overlay__ {
-			status = "disabled";
-		};
-	};
-
-
-        fragment@3 {
-		target = <&i2c2>;
-		__overlay__ {
-			pinctrl-0 = <&i2c2_pins>;
-			pinctr_names = "default";
-			clock-frequency = <100000>;
-			status = "okay";
-			#address-cells = <1>;
-			#size-cells = <0>;
-		};
-        };
-
 };
