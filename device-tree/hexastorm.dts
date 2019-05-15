@@ -30,12 +30,12 @@
 		"P9.14",        // y-po
 		"P9.15",        // x-po
 		"P9.16",        // z-po
-		"P9.17",        // spio-csx
-		"P9.18",        // spio-di
+		"P9.17",        // spi0-cs0 = spi0_csx
+		"P9.18",        // spi0-di
 		"P9.19",        // i2c2_scl
 		"P9.20",        // i2c2_sda
-		"P9.21",        // spio-do
-		"P9.22",        // spio-scl
+		"P9.21",        // spi0-do
+		"P9.22",        // spi0-scl
 		"P9.23",        // poly-en
 		"P9.24",	// ph-diode
 		"P9.25",        // ic-hb-pwm1
@@ -48,6 +48,14 @@
 	fragment@0 {
 		target = <&am33xx_pinmux>;
 		__overlay__ {
+			spi0_pins_s0: spi0_pins_s0{
+				pinctrl-single,pins = <
+					0x150 0x30  /* spi0_sclk            */
+					0x154 0x30  /* spi0_d0              */
+					0x158 0x10  /* spi0_d1              */
+					0x15c 0x10  /* spi0_cs0             */
+				>;
+			};
 			pinctrl_test: pinctrl_test_0_pins {
 				pinctrl-single,pins = <
 				        0x034 0x07  /* P8_11 Y-enable       */
@@ -64,7 +72,6 @@
                                         0x048 0x27  /* P9_14 y-po           */
 					0x040 0x27  /* P9_15 X-po           */
 					0x04c 0x27  /* P9_16 z-po           */
-					0x15c 0x07  /* P9_17 spio-csx       */
 					0x044 0x07  /* P9_23 poly_en        */
 					0x184 0x26  /* P9_24 ph-diode       */
 					0x1ac 0x05  /* P9_25 ic-hb-pwm1     */
@@ -91,4 +98,23 @@
 		};
 
 	};
+
+	fragment@2 {
+		target = <&spi0>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi0_pins_s0>;
+
+			spidev@0{
+				spi-max-frequency = <24000000>;
+				reg = <0>;
+				compatible = "linux,spidev";
+			};
+
+		};
+	};	
 };
