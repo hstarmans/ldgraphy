@@ -12,7 +12,7 @@ GPIO.output(spio_csy, GPIO.HIGH)
 # disable z-select
 spio_csz = "P8_14"
 GPIO.setup(spio_csz, GPIO.OUT)
-GPIO.setup(spio_csz, GPIO.HIGH)
+GPIO.output(spio_csz, GPIO.HIGH)
 # connect to SPI
 spi = SPI(1,0)
 
@@ -37,10 +37,11 @@ def test():
     print("Check is {}".format(res==[1,2,3,4]))
 print("Checking SPIO communication with steppers")
 print("Checking x-stepper")
+spi.cshigh = False 
 test()
 # check if you receive 1,2,3,4
 print("Checking y-stepper")
-spi.cshigh = True
+spi.cshigh = True 
 GPIO.output(spio_csy, GPIO.LOW)
 test()
 print("Checking z-stepper")
