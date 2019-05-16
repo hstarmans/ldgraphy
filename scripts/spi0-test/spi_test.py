@@ -34,7 +34,7 @@ def test():
     res = spi.readbytes(5)
     spi.writebytes([0xEC, 1, 2, 3, 4])
     res = spi.readbytes(5)[1:5]
-    print("Check 1 is {}".format(res==[1,2,3,4]))
+    print("Check is {}".format(res==[1,2,3,4]))
 print("Checking SPIO communication with steppers")
 print("Checking x-stepper")
 test()
