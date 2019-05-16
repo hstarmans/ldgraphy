@@ -18,12 +18,14 @@
 	        "P8.11",        // y-enable
 		"P8.12",        // y-step
 		"P8.13",        // fan-pwm
+		"ehrpwm2A",
 		"P8.14",        // SPIO_CSZ
 		"P8.15",        // y-dir
 		"P8.16",        // z-step
 		"P8.17",        // z-dir
 		"P8.18",        // z-enable
 		"P8.19",        // spindle-pwm
+		"ehrpwm2B",
 
 		"P9.11",        // spio-csy
 		"P9.12",        // x-enable
@@ -44,6 +46,10 @@
 		"P9.30",        // poly-pwm
 		"P9.41",        // x-step
 		"P9.42";        // x-dir
+	
+	/*
+	 *  Free up the pins used by the cape from the pinmux helpers
+	 */ 
 
 	fragment@0 {
 		target = <&am33xx_pinmux>;
@@ -116,5 +122,20 @@
 			};
 
 		};
-	};	
+	};
+
+	fragment@3 {
+		target = <&epwmss2>;
+		__overlay__{
+			status = "okay";
+		};
+	};
+
+	fragment@4 {
+		target = <&ehrpwm2>;
+		__overlay__{
+			status = "okay";
+		};
+	};
+
 };
