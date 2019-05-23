@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-""" move_x.py - test script for the Firestarter
-moves the x-motor for a given amount of steps and stepspeed
+""" move_y.py - test script for the Firestarter
+moves the y-motor for a given amount of steps and stepspeed
 """
 from pyuio.ti.icss import Icss
 import ctypes

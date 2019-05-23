@@ -1,7 +1,8 @@
 # @Author: Rik Starmans
 # @Company: Hexastorm
 # Notes:
-#   c++ class here https://github.com/teemuatlut/TMC2130Stepper, class is easy to test on Arduino
+#   aruidno test class https://github.com/teemuatlut/TMC2130Stepper
+#   beaglebone test class https://github.com/hstarmans/TMC2130Stepper
 #   you must apply power to motor or driver will not work, all it will return is 255
 from Adafruit_BBIO.SPI import SPI
 import Adafruit_BBIO.GPIO as GPIO
