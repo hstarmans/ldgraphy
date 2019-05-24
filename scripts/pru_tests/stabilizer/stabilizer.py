@@ -50,7 +50,7 @@ MICROSTEPPING = 1
 #TOTAL_LINES = round(10*STEPSPERMM)
 DIRECTION = False # False is in the homing direction
 
-y_direction_output = "P9_12"
+y_direction_output = "P8_15"
 GPIO.setup(y_direction_output, GPIO.OUT)
 if DIRECTION:
     GPIO.output(y_direction_output, GPIO.HIGH)
@@ -58,7 +58,7 @@ else:
     GPIO.output(y_direction_output, GPIO.LOW)
 
 
-y_enable_output = "P9_15"
+y_enable_output = "P8_11"
 GPIO.setup(y_enable_output, GPIO.OUT)
 GPIO.output(y_enable_output, GPIO.HIGH) # motor disabled
 

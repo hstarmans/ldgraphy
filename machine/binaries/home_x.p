@@ -4,7 +4,7 @@
 #define GPIO_1_BASE       0x4804c000
 #define CONST_PRUDRAM     C24
 #define GPIO_DATAIN       0x138
-#define XPO               19
+#define XPO               16
 
 .struct Params
 	.u32	steps
@@ -32,13 +32,13 @@ STEPLOOP:
     MOV r2, 0 ; success
     JMP FINISH
 bit_is_clear:
-    SET r30.t2 ; X-STEP pulse
+    SET r30.t6 ; X-STEP pulse
     MOV r0, params.halfperiodstep
 DELAYON:
     SUB r0, r0, 1
     QBNE DELAYON, r0, 0
 
-    CLR r30.t2   ; X-STEP pulse
+    CLR r30.t6   ; X-STEP pulse
     MOV r0, params.halfperiodstep
 DELAYOFF:
     SUB r0, r0, 1

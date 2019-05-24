@@ -14,11 +14,14 @@ START:
     SBCO r0, C4, 4, 4	
     SET r30.t1
     MOV r1, TICKS
+
+LASERON:
+    SET r30.t7  ; laser channel 1
     
 POLYLOOP:
     ; Polygon output pin high
-    ; SET r30.t7     // PANASONIC AN44000A
-    SET r30.t5  ; NBC3111
+    ; PANASONIC AN44000A, flip enable pin
+    SET r30.t2  ; NBC3111
     MOV r0, DELAY
        
 DELAYON:
@@ -26,8 +29,8 @@ DELAYON:
     QBNE DELAYON, r0, 0
 
     ; Polygon output pin low
-    ; CLR r30.t7     // PANASONIC AN44000A
-    CLR r30.t5        // NBC3111
+    ; PANASONIC AN44000A, flip enable pin
+    CLR r30.t2        ; NBC3111
     MOV r0, DELAY
 
 DELAYOFF:
@@ -36,5 +39,7 @@ DELAYOFF:
 
     SUB r1, r1, 1
     QBNE POLYLOOP, r1, 0
-    CLR r30.t1
+
+LASEROFF:
+    CLR r30.t7  ; laser channel 1
 HALT

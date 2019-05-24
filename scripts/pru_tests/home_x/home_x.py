@@ -13,14 +13,14 @@ STEPSPEED = round(4*STEPS_PER_MM)
 STEPS = round(200*STEPS_PER_MM)
 DIRECTION = False  # true is to home
 
-x_direction_output = "P9_20"
+x_direction_output = "P9_42"
 GPIO.setup(x_direction_output, GPIO.OUT)
 if DIRECTION:
     GPIO.output(x_direction_output, GPIO.HIGH)
 else:
     GPIO.output(x_direction_output, GPIO.LOW)
 
-x_enable = "P9_19"
+x_enable = "P9_12"
 GPIO.setup(x_enable, GPIO.OUT)
 GPIO.output(x_enable, GPIO.LOW)
 

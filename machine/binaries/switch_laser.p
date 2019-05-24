@@ -17,14 +17,14 @@ START:
     MOV r0, params.power
     QBEQ LASEROFF, r0, 0 
 CHANNEL1ON:
-    SET r30.t1
+    SET r30.t7
     QBEQ FINISH, r0, 1
 CHANNEL2ON:
-    SET r30.t0
+    SET r30.t5
     QBEQ FINISH, r0, 2
 LASEROFF:
-    CLR r30.t1  
-    CLR r30.t0
+    CLR r30.t7  
+    CLR r30.t5
 FINISH:
 HALT
 

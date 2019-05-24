@@ -6,6 +6,8 @@ The photodiode is measured for three seconds, if high within these three seconds
 test is succesfull, otherwise unsuccesfull.
 The laser is turned off.
 """
+from ctypes import c_uint32
+
 from pyuio.ti.icss import Icss
 
 pruss = Icss('/dev/uio/pruss/module')

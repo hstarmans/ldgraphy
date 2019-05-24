@@ -16,13 +16,13 @@ START:
 
     MOV r1, TIMES ; pulse 3 times
 BLINK:
-    SET r30.t1   ; LASER ON
+    SET r30.t7   ; LASER ON
     MOV r0, DELAY
 DELAYON:
     SUB r0, r0, 1
     QBNE DELAYON, r0, 0
 LASEROFF:
-    CLR r30.t1   ; LASER OFF
+    CLR r30.t7   ; LASER OFF
     MOV r0, DELAY
 DELAYOFF:
     SUB r0, r0, 1

@@ -13,14 +13,14 @@ STEPSPEED = round(STEP_PER_MM)
 STEPS = round(200*STEP_PER_MM) 
 DIRECTION = False # False is homing direction 
 
-y_direction_output = "P9_12"
+y_direction_output = "P8_15"
 GPIO.setup(y_direction_output, GPIO.OUT)
 if DIRECTION:
     GPIO.output(y_direction_output, GPIO.HIGH)
 else:
     GPIO.output(y_direction_output, GPIO.LOW)
 
-y_enable = "P9_15"
+y_enable = "P8_11"
 GPIO.setup(y_enable, GPIO.OUT)
 GPIO.output(y_enable, GPIO.LOW)
 
