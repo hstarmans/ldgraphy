@@ -36,15 +36,15 @@ def test():
     spi.writebytes([0xEC, 1, 2, 3, 4])
     res = spi.readbytes(5)[1:5]
     print("Check is {}".format(res==[1,2,3,4]))
-print("Checking SPIO communication with steppers")
-print("Checking x-stepper")
-spi.cshigh = False 
-test()
-# check if you receive 1,2,3,4
-print("Checking y-stepper")
-spi.cshigh = True 
-GPIO.output(spio_csy, GPIO.LOW)
-test()
+# print("Checking SPIO communication with steppers")
+# print("Checking x-stepper")
+# spi.cshigh = False 
+# test()
+# # check if you receive 1,2,3,4
+# print("Checking y-stepper")
+# spi.cshigh = True 
+# GPIO.output(spio_csy, GPIO.LOW)
+# test()
 print("Checking z-stepper")
 GPIO.output(spio_csy, GPIO.HIGH)
 GPIO.output(spio_csz, GPIO.LOW)
