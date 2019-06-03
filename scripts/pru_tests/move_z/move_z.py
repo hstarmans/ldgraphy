@@ -18,8 +18,8 @@ DIRECTION = False  # False is in the homing direction
 steps = round(STEPS)
 halfperiodstep = 1/(2*STEPSPEED)
 #TODO: overwrite
-halfperiodstep = 1
-steps = 1000
+halfperiodstep = 10E-6
+steps = 10000
 
 # PINS
 z_direction_output = "P8_17"
@@ -38,52 +38,64 @@ GPIO.setup(z_enable_output, GPIO.OUT)
 GPIO.output(z_enable_output, GPIO.LOW)
 
 #TODO: port this to other stepper actions
-spio_csx = "P9_17"
+#spio_csx = "P9_17"
 spio_csy = "P9_11"
 spio_csz = "P8_14"
-spio_selects = [spio_csx, spio_csy, spio_csz]
+spi = SPI(1,0)
+#spi.no_cs = True
+spi.cshigh = True
+spio_selects = [spio_csy, spio_csz]
 for select in spio_selects:
     GPIO.setup(select, GPIO.OUT)
     GPIO.output(select, GPIO.HIGH)
 
 GPIO.output(spio_csz, GPIO.LOW)
-spi = SPI(1,0)
-spi.cshigh = True
 spi.mode = 3
 spi.msh = int(16000000/8)
+#spi.msh = 1000
 
-def controlledwrite(lst):
+def controlledwrite(lst, chipselect):
     spi.writebytes(lst)
+    GPIO.output(chipselect, GPIO.HIGH)
+    sleep(1)
+    GPIO.output(chipselect, GPIO.LOW)
     spi.readbytes(len(lst))
+    GPIO.output(chipselect, GPIO.HIGH)
+    sleep(1)
+    GPIO.output(chipselect, GPIO.LOW)
     spi.writebytes(lst)
+    GPIO.output(chipselect, GPIO.HIGH)
+    sleep(1)
+    GPIO.output(chipselect, GPIO.LOW)
     print("Target: {}", lst)
-    print(spi.readbytes(len(lst)))
-    print("The status bit: {}", bin(lst(0)))
+    res = spi.readbytes(len(lst))
+    print(res)
+    print("The status bit: {}", bin(res[0]))
 
-# https://github.com/makertum/Trinamic_TMC2130
-# makerturm writes
-#     --> set_I_scale_analog  (dit lijkt zeker te moeten)
 
 # het kan zijn dat je naar chopconf moet schrijven
 # om je motor van microstepping 256 te halen
 # makerturm raad ook aan om TBL en TOFF te zetten
 #     --> set_tbl
-#     --> set_toff
-
+#     --> set_toff to 8
+controlledwrite([0xEC, 0x01, int('110000',2), 0x00, 0x08], chipselect=spio_csz)
 # convert to binary
 
 # set current
 # write access add 0x80
 # REGISTER IHOLD_IRUN ; addr 0x10
-# bit 4..0 to 16  --> 0x10 (ihold current)
-# bit 12.8 to 16  --> 0x10 (irun current)
+# bit 4..0 to 22  --> 0x10 (ihold current)
+# bit 12.8 to 31  --> 0x10 (irun current)
+# bit 19..16 to max
+
 
 # status bits seem to be able to equal to zero
-controlledwrite([0x10+0x80, 0, 0x06, 0x1F, 0x0A])
-# stealth chop --> en_pwm mode
+controlledwrite([0x10+0x80, 0, 0xFF, 0x1F, 0x16], chipselect=spio_csz)
+# no stealth chop bit 2 to zero
 # REGISTER general configuration; addr 0x00
-# bit 2 to 1  b'0100' = 4
-controlledwrite([0x00+0x80, 0, 0, 0, 4])
+# set_I_scale_analog  bit 0 to 1
+# bit 2 to 1  int('0101',2)
+controlledwrite([0x00+0x80, 0, 0, 0, int('0101',2)], chipselect=spio_csz)
 
 GPIO.setup(z_step_output, GPIO.OUT)
 for step in range(0, steps):

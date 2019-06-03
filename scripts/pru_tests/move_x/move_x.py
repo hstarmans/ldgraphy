@@ -7,7 +7,7 @@ import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
-XSTEPSPERMM = 76.2 
+XSTEPSPERMM = 76.2*256 
 STEPSPEED = round(1*XSTEPSPERMM)
 STEPS =  round(10*XSTEPSPERMM) 
 DIRECTION = True   # false is in direction home
