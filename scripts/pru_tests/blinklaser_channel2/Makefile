@@ -1,5 +1,5 @@
 COMPILER=pasm 
-FILENAME=blinklaser
+FILENAME=blinklaser2
 
 .PHONY: clean all
 

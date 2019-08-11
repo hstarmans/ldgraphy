@@ -7,8 +7,12 @@ test is succesfull, otherwise unsuccesfull.
 The laser is turned off.
 """
 from ctypes import c_uint32
-
+import Adafruit_BBIO.GPIO as GPIO
 from pyuio.ti.icss import Icss
+
+GPIO.setup("P9_23", GPIO.OUT)
+# enable polygon motor
+GPIO.output("P9_23", GPIO.LOW)
 
 pruss = Icss('/dev/uio/pruss/module')
 
@@ -19,6 +23,9 @@ while not pruss.core0.halted:
     pass
 byte0 = pruss.core0.dram.map(c_uint32)
 print(hex(byte0.value))
+# disable polygon motor
+GPIO.output("P9_23", GPIO.HIGH)
+GPIO.cleanup()
 
 
 
