@@ -40,7 +40,7 @@ DELAYOFF:
     SET r4.t6
 MEASURE:
     SUB r2, r2, 1
-    QBBS FINISH, r31.t16
+    QBBC FINISH, r31.t16
     QBNE MEASURE, r2, 0
 
     MOV r3, 0xbabe0001 ; photodiode test unsuccesfull, i.e timeout
