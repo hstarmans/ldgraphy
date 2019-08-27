@@ -377,5 +377,7 @@ REPORT_DEBUG_BREAK:
 	JMP ERROR_SET_VALUE
 
 ERROR_SET_VALUE:
-	SBCO r1.b0, CONST_PRUDRAM, ERROR_RESULT_POS, 1
-	JMP FINISH
+        SBCO r1.b0, CONST_PRUDRAM, ERROR_RESULT_POS, 1
+        ;; signal host that we are done, code waits for this 
+	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; tell that status changed.
+        JMP FINISH

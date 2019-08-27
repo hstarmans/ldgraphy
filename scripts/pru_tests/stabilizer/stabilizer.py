@@ -39,7 +39,7 @@ START_RINGBUFFER = 5
 # line
 data_byte = [int('10000000', 2)]*1+[int('00000000',2)]*15  # left bit, bit 7 read out first
 LINE = data_byte*(SCANLINE_DATA_SIZE//16)+SCANLINE_DATA_SIZE%16*[int('00000000',2)]
-print("length line is"+str(len(LINE)))
+print("length line is "+str(len(LINE)))
 
 DURATION = 10  # seconds
 TOTAL_LINES = RPM*DURATION/60*FACETS
@@ -92,6 +92,7 @@ print("running core and uploaded data")
 
 byte = START_RINGBUFFER # increased scanline size each loop
 response = 1
+
 while True and not pruss.core0.halted:
     data = [COMMANDS.inv['CMD_SCAN_DATA']] + LINE
     if response >= TOTAL_LINES - QUEUE_LEN:
@@ -106,7 +107,6 @@ while True and not pruss.core0.halted:
         if command == 'CMD_EMPTY':
             pruss.core0.dram.write(data, offset = byte)    
         else:
-            print("Command received; {}".format(command))
             break
     except IndexError:
         print("ERROR, command out of index; index {}".format(command_index))
