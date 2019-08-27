@@ -37,11 +37,13 @@ START_RINGBUFFER = 5
 # end of laser_scribe-constants.h
 
 # line
-data_byte = [int('10000000', 2)]*1+[int('00000000',2)]*15  # left bit, bit 7 read out first
-LINE = data_byte*(SCANLINE_DATA_SIZE//16)+SCANLINE_DATA_SIZE%16*[int('00000000',2)]
+data_byte = [int('10000000', 2)]*1+[int('00000000',2)]*31  # left bit, bit 7 read out first
+# line totally on; to detect edges
+#data_byte = [int('11111111', 2)]*16
+LINE = data_byte*(SCANLINE_DATA_SIZE//32)+SCANLINE_DATA_SIZE%32*[int('00000000',2)]
 print("length line is "+str(len(LINE)))
 
-DURATION = 10  # seconds
+DURATION = 40  # seconds
 TOTAL_LINES = RPM*DURATION/60*FACETS
 
 # Steps
