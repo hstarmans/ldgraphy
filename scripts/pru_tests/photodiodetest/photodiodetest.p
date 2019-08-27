@@ -17,6 +17,7 @@ START:
     MOV r1, TICKS
     MOV r2, PHOTODIODETIME
     MOV r3, 0xbabe0000 ; photodiode test succesfull
+    ; pin can be low upon no connect --> not tested
     SET r30.t7         ; LASER channel 1 ON
 
 POLYLOOP:

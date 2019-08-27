@@ -41,7 +41,7 @@ data_byte = [int('10000000', 2)]*1+[int('00000000',2)]*15  # left bit, bit 7 rea
 LINE = data_byte*(SCANLINE_DATA_SIZE//16)+SCANLINE_DATA_SIZE%16*[int('00000000',2)]
 print("length line is"+str(len(LINE)))
 
-DURATION = 100  # seconds
+DURATION = 10  # seconds
 TOTAL_LINES = RPM*DURATION/60*FACETS
 
 # Steps
@@ -69,6 +69,11 @@ if TOTAL_LINES <= QUEUE_LEN:
 # DATA to send before PRU start
 data = [ERRORS.inv['ERROR_NONE']] + [0]*4
 data += ([COMMANDS.inv['CMD_SCAN_DATA']] + LINE)* QUEUE_LEN
+
+# ENABLE polygon motor
+polygon_enable = "P9_23"
+GPIO.setup(polygon_enable, GPIO.OUT)
+GPIO.output(polygon_enable, GPIO.LOW)
 
 
 pruss = Icss("/dev/uio/pruss/module")
@@ -132,3 +137,4 @@ except IndexError:
 sync_fails = pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
 print("There have been {} sync fails".format(sync_fails))
 GPIO.output(y_enable_output, GPIO.HIGH)  # disable motors
+GPIO.output(polygon_enable, GPIO.HIGH)

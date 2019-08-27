@@ -79,12 +79,12 @@
 // Reading from r31
 .macro branch_if_hsync
 .mparam to_label
-        QBBC bit_is_clear, r31, 16 	   ; direct PRU input
+        QBBS bit_is_set, r31, 16 	   ; direct PRU input
 	QBEQ no_hsync, v.last_hsync_bit, 1 ; we are only interested in 0->1 edge
 	MOV v.last_hsync_bit, 1
 	MOV v.hsync_time, v.global_time 
         JMP to_label
-bit_is_clear:
+bit_is_set:
 	MOV v.last_hsync_bit, 0
 no_hsync:
 .endm
