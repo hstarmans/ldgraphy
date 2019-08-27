@@ -92,7 +92,7 @@ print("running core and uploaded data")
 
 byte = START_RINGBUFFER # increased scanline size each loop
 response = 1
-while True:
+while True and not pruss.core0.halted:
     data = [COMMANDS.inv['CMD_SCAN_DATA']] + LINE
     if response >= TOTAL_LINES - QUEUE_LEN:
         data = [COMMANDS.inv['CMD_EXIT']]
@@ -136,5 +136,6 @@ except IndexError:
 
 sync_fails = pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
 print("There have been {} sync fails".format(sync_fails))
-GPIO.output(y_enable_output, GPIO.HIGH)  # disable motors
+# disable motors
+GPIO.output(y_enable_output, GPIO.HIGH)  
 GPIO.output(polygon_enable, GPIO.HIGH)
