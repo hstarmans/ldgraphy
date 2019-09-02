@@ -16,8 +16,17 @@ START:
     
     MOV r1, TICKS
     MOV r2, PHOTODIODETIME
-    MOV r3, 0xbabe0000 ; photodiode test succesfull
-    ; pin can be low upon no connect --> not tested
+    
+    
+    MOV r3, 0x2 ; photodiode test unsuccesfull, sensor fail
+
+    ; pin is high without light and low with light
+    ; so if pin is low without light, sensor does not work
+    CLR r30.t7
+    QBBC FINISH, r31.t16;
+    
+    MOV r3, 0x0 ; photodiode successfull, 
+
     SET r30.t7         ; LASER channel 1 ON
 
 POLYLOOP:
@@ -44,7 +53,7 @@ MEASURE:
     QBBC FINISH, r31.t16
     QBNE MEASURE, r2, 0
 
-    MOV r3, 0xbabe0001 ; photodiode test unsuccesfull, i.e timeout
+    MOV r3, 0x1 ; photodiode test unsuccesfull, no signal in time window (i.e. timeout)
 
 FINISH:
     SBCO r3, c24, 0, 4                  ; place result in PRU0 ram

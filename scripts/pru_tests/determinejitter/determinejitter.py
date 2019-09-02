@@ -30,12 +30,13 @@ FACETS = 4
 SCANLINE_DATA_SIZE = 937 
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
+TICKS_PER_MIRROR_SEGMENT = 12500
 QUEUE_LEN = 8
 ERROR_RESULT_POS = 0
 SYNC_FAIL_POS = 1
 START_RINGBUFFER = 5
 SINGLE_FACET = True
-DURATION = 30 # seconds
+DURATION = 5 # seconds
 # end of laser_scribe-constants.h
 
 # line for multiple facets
@@ -90,14 +91,18 @@ pruss.intc.ev_ch[PRU0_ARM_INTERRUPT] = IRQ
 pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
 pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
 
-pruss.core0.load('./stabilizer.bin')
+pruss.core0.load('./determinejitter.bin')
 pruss.core0.dram.write(data)
 pruss.core0.run()
 print("running core and uploaded data")
 
 byte = START_RINGBUFFER # increased scanline size each loop
 response = 1
+# you read through ring buffer, it is extended by one to read out hsync time
 
+# for each facet the sync time is determined, this should be the ticks per mirror segment
+
+hsync_times = []
 while True and not pruss.core0.halted:
     if SINGLE_FACET and (response%4!=0):
         data = [COMMANDS.inv['CMD_SCAN_DATA']] + SCANLINE_DATA_SIZE*[0]
@@ -110,10 +115,11 @@ while True and not pruss.core0.halted:
     pruss.intc.ev_clear_one(pruss.intc.out_event[IRQ])
     pruss.intc.out_enable_one(IRQ)
     [command_index] = pruss.core0.dram.map(length = 1, offset = byte)
+    hsync_times.append(pruss.core0.dram.map(c_uint32, offset = 1).value)
     try:
         command = COMMANDS[command_index]
         if command == 'CMD_EMPTY':
-            pruss.core0.dram.write(data, offset = byte)    
+            pruss.core0.dram.write(data, offset = byte) 
         else:
             break
     except IndexError:
@@ -141,9 +147,36 @@ try:
     print("Error received; {}".format(ERRORS[error_index]))
 except IndexError:
     print("ERROR, error out of index")
-
-sync_fails = pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
-print("There have been {} sync fails".format(sync_fails))
+# TODO: sync fails doesn't work
+#sync_fails = pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
+#print("There have been {} sync fails".format(sync_fails))
 # disable motors
 GPIO.output(y_enable_output, GPIO.HIGH)  
 GPIO.output(polygon_enable, GPIO.HIGH)
+# The expected hsync time, see constants TICKS PER MIRROR SEGMENT
+print("The expected hsync time is {}".format(12500))
+print("The first 16 hsync times are")
+# print the first 16 hsync times
+for item in range(0,16):
+    print(hsync_times[item])
+# let's see if we can create two bins, one for a single facet and the rest for the others
+bins=hsync_times[1:FACETS]
+cntrs = [0,0]
+for time in hsync_times:
+    if (12350-10)<time<(12350+10):
+        cntrs[0]+=1
+    else:
+        cntrs[1]+=1
+print("The counters are {}".format(cntrs))
+# sum
+sum_cntrs = 0
+for cntr in cntrs:
+    sum_cntrs += cntr
+
+if len(hsync_times) != sum_cntrs:
+    print("Can't bin all times missing {}".format(len(hsync_times)-sum_cntrs))
+else:
+    print("Test passed, can bin all times")
+
+
+

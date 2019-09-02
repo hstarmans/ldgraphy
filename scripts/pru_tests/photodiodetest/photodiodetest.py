@@ -22,7 +22,16 @@ pruss.core0.run()
 while not pruss.core0.halted:
     pass
 byte0 = pruss.core0.dram.map(c_uint32)
-print(hex(byte0.value))
+
+return_value = int(byte0.value)
+
+if return_value == 0:
+    print("Test successfull")
+elif return_value == 1:
+    print("Photo diode detector connected but no signal")
+else:
+    print("Photo diode detector not connected")
+
 # disable polygon motor
 GPIO.output("P9_23", GPIO.HIGH)
 GPIO.cleanup()
