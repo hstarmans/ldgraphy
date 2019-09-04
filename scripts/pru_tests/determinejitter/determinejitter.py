@@ -173,8 +173,10 @@ sum_cntrs = 0
 for cntr in cntrs:
     sum_cntrs += cntr
 
-if len(hsync_times) != sum_cntrs:
-    print("Can't bin all times missing {}".format(len(hsync_times)-sum_cntrs))
+difference = len(hsync_times)//4-cntrs[0]
+
+if abs(difference)>1:
+    print("Difference of bin times seems incorrect {}".format(difference))
 else:
     print("Test passed, can bin all times")
 

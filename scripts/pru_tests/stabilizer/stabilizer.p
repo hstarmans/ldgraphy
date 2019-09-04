@@ -224,9 +224,9 @@ confirm_stable_hsync_seen:
 	CLR r30.t7 ; hsync finished, laser pwm1 off
 	CLR r30.t5 ; laser pwm2 off
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
-	/* todo: test if in between expected range, otherwise state wait stable */
-	/*       zeller went straight to data run but I want it to pass the facet filter */
-	JMP active_data_wait;
+	/* todo: test if in between expected range, otherwise state wait stable 
+	         zeller went straight to data run but I want it to pass the facet filter */
+	JMP active_data_wait
 
 	;; Sync step between data lines.
 STATE_DATA_WAIT_FOR_SYNC:
@@ -245,9 +245,11 @@ wait_for_sync_hsync_seen:
 	MOV v.last_hsync_time, v.hsync_time
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
 	/* TODO: this only works for MVP demonstrator model 1
-	/*       we kick out except for a single one, 
-	/*       if it is the the outlier continue else go back to STATE_DATA_WAIT_FOR_SYNC
-	QBGE active_data_wait, r4, 12360
+	         if it is the the outlier continue else go back to STATE_DATA_WAIT_FOR_SYNC */
+	; for testing
+        ;JMP active_data_wait
+        MOV r5, 12360
+        QBGE active_data_wait, r4, r5
 
 	;; we step at the end of a data line, so here we should reset.
 	CLR r30.t14  ; y-step
