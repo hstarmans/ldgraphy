@@ -15,7 +15,6 @@
 	part-number = "firestarter";
 	version = "0.2";
         exclusive-use =
-	        "P8.11",        // y-enable
 		"P8.12",        // y-step
 		"P8.13",        // fan-pwm
 		"ehrpwm2A",
@@ -23,12 +22,11 @@
 		"P8.15",        // y-dir
 		"P8.16",        // z-step
 		"P8.17",        // z-dir
-		"P8.18",        // z-enable
 		"P8.19",        // spindle-pwm
 		"ehrpwm2B",
 
 		"P9.11",        // spio-csy
-		"P9.12",        // x-enable
+		"P9.12",        // stepper enable
 		"P9.14",        // y-po
 		"P9.15",        // x-po
 		"P9.16",        // z-po
@@ -64,17 +62,15 @@
 			};
 			pinctrl_test: pinctrl_test_0_pins {
 				pinctrl-single,pins = <
-				        0x034 0x07  /* P8_11 Y-enable       */
 					0x030 0x06  /* P8_12 Y-step         */
 					0x024 0x04  /* P8_13 FAN_PWM        */
 					0x028 0x07  /* P8_14 SPIO_CSZ       */
 					0x03c 0x07  /* P8_15 Y-dir          */
 					0x038 0x07  /* P8_16 Z-step         */
 					0x02c 0x07  /* P8_17 Z-dir          */
-					0x08c 0x07  /* P8_18 Z_enable       */
 					0x020 0x04  /* P8_19 SPINDLE_PWM    */
 				        0x070 0x07  /* P9_11 spio-csy       */
-                                        0x078 0x07  /* P9_12 X-enable       */
+                                        0x078 0x07  /* P9_12 stepper enable */
                                         0x048 0x27  /* P9_14 y-po           */
 					0x040 0x27  /* P9_15 X-po           */
 					0x04c 0x27  /* P9_16 z-po           */
