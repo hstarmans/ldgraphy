@@ -139,7 +139,8 @@ INIT:
 
 	;; switch the laser full on at this period so that we reliably hit the
 	;; hsync sensor.
-	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW - 1
+	
+        ; MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW - 1
 
 	;; Set GPIO bits to writable. Output bits need to be set to 0.
 
@@ -165,7 +166,6 @@ STATE_IDLE:
 	MOV v.wait_countdown, SPINUP_TICKS
 	MOV v.polygon_time, 0
 	MOV v.state, STATE_SPINUP
-        MOV v.sync_laser_on_time, 0
 
 	;; prepare data
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
@@ -194,18 +194,20 @@ STATE_WAIT_STABLE:
 	;; with the laser not properly rotating or no feedback.
 	SUB v.wait_countdown, v.wait_countdown, 1
 	QBEQ REPORT_ERROR_MIRROR, v.wait_countdown, 0
-        QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
-	SET r30.t6     ; laser pwm1 on
-        SET r30.t5     ; laser pwm2 on
-        branch_if_hsync wait_stable_hsync_seen
+
+	branch_if_hsync wait_stable_hsync_seen
 	JMP MAIN_LOOP_NEXT	; todo: account for cpu-cycles
 wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
 	MOV v.last_hsync_time, v.hsync_time ; you move before it passes the check??
+	/* check disabled we don't know where to check
+            branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW */
 	CLR r30.t7     ; laser pwm1 off
 	CLR r30.t5     ; laser pwm2 off
-	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
-        branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
+	LSR r2, r1, 4
+        ADD v.sync_laser_on_time, r1, v.hsync_time
+        SUB v.sync_laser_on_time, v.sync_laser_on_time, r2
+        ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
 	MOV v.state, STATE_CONFIRM_STABLE
 	JMP MAIN_LOOP_NEXT
 
@@ -228,7 +230,10 @@ confirm_stable_hsync_seen:
 	/* calculate hsync_time to enable binning */
 	SUB r4, v.hsync_time, v.last_hsync_time  ;TODO: you push to r4 and later push out to memory dangerous!!
 	MOV v.last_hsync_time, v.hsync_time
-	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
+	LSR r2, r1, 4
+        ADD v.sync_laser_on_time, r1, v.hsync_time
+        SUB v.sync_laser_on_time, v.sync_laser_on_time, r2
+        ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
 	/* todo: test if in between expected range, otherwise state wait stable */
 	MOV v.state, STATE_DATA_RUN
 	JMP MAIN_LOOP_NEXT

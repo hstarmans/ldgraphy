@@ -36,7 +36,7 @@ ERROR_RESULT_POS = 0
 SYNC_FAIL_POS = 1
 START_RINGBUFFER = 5
 SINGLE_FACET = True
-DURATION = 10 # seconds
+DURATION = 5 # seconds
 # end of laser_scribe-constants.h
 
 # line for multiple facets
@@ -157,13 +157,13 @@ GPIO.output(polygon_enable, GPIO.HIGH)
 print("The expected hsync time is {}".format(12500))
 print("The first 16 hsync times are")
 # print the first 16 hsync times
-for item in range(0,16):
-    print(hsync_times[item])
+for item in range(1,17):
+    print(hsync_times[-1*item])
 # let's see if we can create two bins, one for a single facet and the rest for the others
 bins=hsync_times[1:FACETS]
 cntrs = [0,0]
 for time in hsync_times:
-    if (12520-10)<time<(12520+10):
+    if (12350-10)<time<(12350+10):
         cntrs[0]+=1
     else:
         cntrs[1]+=1

@@ -42,8 +42,8 @@
 // segment).
 
 #define TICKS_PER_MIRROR_SEGMENT 12500
-#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/200 // at least 600, too high gives errors 
-#define TICKS_START 3575 // start exposure at 20 percent
+#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/10 // at least 600, too high gives errors 
+#define TICKS_START 4375 // start exposure at 20 percent
 #define FACETS 4
 
 // The data per segment is sent in a bit-array. 

@@ -3,7 +3,7 @@
 
 #define INS_PER_US   200
 #define INS_PER_DELAY_LOOP 2
-#define FREQUENCY 450 ; Hertz maximum is 2.1 kHz
+#define FREQUENCY 12 ; Hertz maximum is 2.1 kHz used to be 45
 #define DELAY  1000 / (FREQUENCY * 2) * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
 #define DURATION 15 ; seconds
 #define TICKS DURATION * FREQUENCY
@@ -17,17 +17,18 @@ START:
     
 POLYLOOP:
     ; Polygon output pin high
-    ; PANASONIC AN44000A, flip enable pin
-    SET r30.t2  ; NBC3111
+    ; PANASONIC AN44000A, flip enable pin, has the end connector point vertically
+    ; NBC3111, end connector horizonal
+    ; to mitage the enable and pulse pin are flipped (PANASONIC uses enable, NBC pwm pin)
+    SET r30.t2  
     MOV r0, DELAY
-       
+
 DELAYON:
     SUB r0, r0, 1
     QBNE DELAYON, r0, 0
 
     ; Polygon output pin low
-    ; PANASONIC AN44000A, flip enable pin
-    CLR r30.t2        ; NBC3111
+    CLR r30.t2        
     MOV r0, DELAY
 
 DELAYOFF:
