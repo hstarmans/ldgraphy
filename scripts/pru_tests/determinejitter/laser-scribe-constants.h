@@ -56,7 +56,7 @@
 #define START_RINGBUFFER 5       // byte 5 ... lines
 
 
-#define SPINUP_TICKS 24000000 // 2.5 seconds
+#define SPINUP_TICKS 24000000 // ? seconds
 
 #define MAX_WAIT_STABLE_TICKS  3000000 // 1.125 seconds, laser on waiting for sync error if expires
 #define END_OF_DATA_WAIT_TICKS 1500000 // 0.75 seconds, no data in time reset to idle, +1 sync fail

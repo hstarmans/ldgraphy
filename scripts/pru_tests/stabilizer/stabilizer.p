@@ -166,6 +166,7 @@ STATE_IDLE:
 	MOV v.last_hsync_time, 0
 	MOV v.polygon_time, 0
 	MOV v.state, STATE_SPINUP
+	MOV v.sync_laser_on_time, 0
 
 	;; prepare data
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
@@ -194,16 +195,19 @@ STATE_WAIT_STABLE:
 	;; with the laser not properly rotating or no feedback.
 	SUB v.wait_countdown, v.wait_countdown, 1
 	QBEQ REPORT_ERROR_MIRROR, v.wait_countdown, 0
-
+	QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
+	SET r30.t6     ; laser pwm1 on
+	SET r30.t5     ; laser pwm2 on
 	branch_if_hsync wait_stable_hsync_seen
 	JMP MAIN_LOOP_NEXT	; todo: account for cpu-cycles
 wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
-	MOV v.last_hsync_time, v.hsync_time ; you move before it passes the check??
-	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
+	MOV v.last_hsync_time, v.hsync_time 
 	CLR r30.t7     ; laser pwm1 off
 	CLR r30.t5     ; laser pwm2 off
+	;; zeller used something different but this didn't work with all motors
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
+	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
 	MOV v.state, STATE_CONFIRM_STABLE
 	JMP MAIN_LOOP_NEXT
 
@@ -247,9 +251,9 @@ wait_for_sync_hsync_seen:
 	/* TODO: this only works for MVP demonstrator model 1
 	         if it is the the outlier continue else go back to STATE_DATA_WAIT_FOR_SYNC */
 	; for testing
-        ;JMP active_data_wait
-        MOV r5, 12360
-        QBGE active_data_wait, r4, r5
+	;JMP active_data_wait
+	MOV r5, 12510
+	QBLT active_data_wait, r4, r5
 
 	;; we step at the end of a data line, so here we should reset.
 	CLR r30.t14  ; y-step

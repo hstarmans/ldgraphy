@@ -194,18 +194,18 @@ STATE_WAIT_STABLE:
 	;; with the laser not properly rotating or no feedback.
 	SUB v.wait_countdown, v.wait_countdown, 1
 	QBEQ REPORT_ERROR_MIRROR, v.wait_countdown, 0
-        QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
+	QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
 	SET r30.t6     ; laser pwm1 on
-        SET r30.t5     ; laser pwm2 on
-        branch_if_hsync wait_stable_hsync_seen
+	SET r30.t5     ; laser pwm2 on
+	branch_if_hsync wait_stable_hsync_seen
 	JMP MAIN_LOOP_NEXT	; todo: account for cpu-cycles
 wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
-	MOV v.last_hsync_time, v.hsync_time ; you move before it passes the check??
+	MOV v.last_hsync_time, v.hsync_time 
 	CLR r30.t7     ; laser pwm1 off
 	CLR r30.t5     ; laser pwm2 off
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
-        branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
+	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
 	MOV v.state, STATE_CONFIRM_STABLE
 	JMP MAIN_LOOP_NEXT
 
