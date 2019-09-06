@@ -165,7 +165,7 @@ STATE_IDLE:
 	MOV v.wait_countdown, SPINUP_TICKS
 	MOV v.polygon_time, 0
 	MOV v.state, STATE_SPINUP
-        MOV v.sync_laser_on_time, 0
+	MOV v.sync_laser_on_time, 0
 
 	;; prepare data
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
