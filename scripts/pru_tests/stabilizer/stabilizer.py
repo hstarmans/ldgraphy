@@ -35,7 +35,7 @@ ERROR_RESULT_POS = 0
 SYNC_FAIL_POS = 1
 START_RINGBUFFER = 5
 SINGLE_FACET = True
-DURATION = 300/4 # seconds
+DURATION = 30/4 # seconds
 # end of laser_scribe-constants.h
 
 # line for multiple facets

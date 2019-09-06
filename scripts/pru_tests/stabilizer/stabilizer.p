@@ -205,7 +205,7 @@ wait_stable_hsync_seen:
 	MOV v.last_hsync_time, v.hsync_time 
 	CLR r30.t7     ; laser pwm1 off
 	CLR r30.t5     ; laser pwm2 off
-	;; zeller used something different but this didn't work with all motors
+	/* zeller used something different but this didn't work with all motors */
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
 	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
 	MOV v.state, STATE_CONFIRM_STABLE
@@ -253,7 +253,7 @@ wait_for_sync_hsync_seen:
 	; for testing
 	;JMP active_data_wait
 	MOV r5, 12510
-	QBLT active_data_wait, r4, r5
+	QBLT active_data_wait, r5, r4
 
 	;; we step at the end of a data line, so here we should reset.
 	CLR r30.t14  ; y-step
