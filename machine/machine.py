@@ -1,5 +1,5 @@
 '''
-Class which can be used to be interact with instrument
+Class which can be used to be interact with Hexastorm
 
 @company: Hexastorm
 @author: Rik Starmans

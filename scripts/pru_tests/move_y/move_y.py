@@ -8,22 +8,26 @@ import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
 STEPSPERMM = 76.2
-MICROSTEPPING = 1
-STEPSPEED = round(3*STEPSPERMM) 
-STEPS = round(10 * STEPSPERMM)
+MICROSTEPPING = 64
+STEPSPEED = round(3*STEPSPERMM*MICROSTEPPING) 
+STEPS = round(10 * STEPSPERMM*MICROSTEPPING)
 DIRECTION = False  # False is in the homing direction
 
 
 y_direction_output = "P8_15"
+enable_output = "P9_12"
+
+GPIO.setup(enable_output, GPIO.OUT)
 GPIO.setup(y_direction_output, GPIO.OUT)
+
+
+
 if DIRECTION:
     GPIO.output(y_direction_output, GPIO.HIGH)
 else:
     GPIO.output(y_direction_output, GPIO.LOW)
 
-y_enable_output = "P8_11"
-GPIO.setup(y_enable_output, GPIO.OUT)
-GPIO.output(y_enable_output, GPIO.LOW)
+GPIO.output(enable_output, GPIO.LOW)
 
 # DERIVED
 CPU_SPEED = 200E6
@@ -47,4 +51,4 @@ pruss.core0.run()
 print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
-GPIO.output(y_enable_output, GPIO.HIGH)  # disable motors
+GPIO.output(enable_output, GPIO.HIGH)  # disable motors

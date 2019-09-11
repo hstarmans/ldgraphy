@@ -24,7 +24,6 @@
 		"P8.17",        // z-dir
 		"P8.19",        // spindle-pwm
 		"ehrpwm2B",
-
 		"P9.11",        // spio-csy
 		"P9.12",        // stepper enable
 		"P9.14",        // y-po
@@ -81,7 +80,7 @@
 					0x1a4 0x05  /* P9_27 ic-hb-pwm2     */
 					0x198 0x05  /* P9_30 poly-pwm       */
 				        0x1a8 0x05  /* P9_41 x-step         */
-					0x1a0 0x05  /* P9_42 x-dir          */
+					0x164 0x07  /* P9_42 x-dir          */
 				>;
 			};
 		};
