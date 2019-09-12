@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-""" home_x.py - test script for the Firestarter
-moves the x-motor for a given amount of steps and stepspeed
-or until it hits the x-home switch
+""" home_y.py - test script for the Firestarter
+moves the y-motor for a given amount of steps and stepspeed
+unless it hits the y-home switch
 """
 from pyuio.ti.icss import Icss
 import ctypes
@@ -9,26 +9,28 @@ import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
 STEP_PER_MM = 76.2
-STEPSPEED = round(STEP_PER_MM)
+STEPSPEED = round(3*STEP_PER_MM)
 STEPS = round(200*STEP_PER_MM) 
 DIRECTION = False # False is homing direction 
 
-y_direction_output = "P8_15"
-GPIO.setup(y_direction_output, GPIO.OUT)
-if DIRECTION:
-    GPIO.output(y_direction_output, GPIO.HIGH)
-else:
-    GPIO.output(y_direction_output, GPIO.LOW)
+y_direction_pin = "P8_15"
+enable_pin = "P9_12"
 
-y_enable = "P8_11"
-GPIO.setup(y_enable, GPIO.OUT)
-GPIO.output(y_enable, GPIO.LOW)
+GPIO.setup(y_direction_pin, GPIO.OUT)
+GPIO.setup(enable_pin, GPIO.OUT)
+
+
+if DIRECTION:
+    GPIO.output(y_direction_pin, GPIO.HIGH)
+else:
+    GPIO.output(y_direction_pin, GPIO.LOW)
+
+GPIO.output(enable_pin, GPIO.LOW)
 
 # DERIVED
 CPU_SPEED = 200E6
 INST_PER_LOOP = 2
 HALF_PERIOD_STEP = round(CPU_SPEED/(2*STEPSPEED*INST_PER_LOOP))
-
 
 class Params( ctypes.Structure ):
     _fields_ = [
@@ -46,11 +48,9 @@ pruss.core0.run()
 print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
-GPIO.output(y_enable, GPIO.HIGH)
+GPIO.output(enable_pin, GPIO.HIGH)
 if pruss.core0.r2:
     print("Homing failed")
 else:
     print("Touched home switch")
-
-
 
