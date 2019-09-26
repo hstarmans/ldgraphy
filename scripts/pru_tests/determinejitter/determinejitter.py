@@ -27,11 +27,11 @@ ERRORS += ['ERROR_TIME_OVERRUN']
 ERRORS = bidict(enumerate(ERRORS))
 RPM = 2400
 FACETS = 4
-SCANLINE_DATA_SIZE = 937 
+SCANLINE_DATA_SIZE = 937
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
-TICKS_PER_MIRROR_SEGMENT = 12500
-QUEUE_LEN = 8
+TICKS_PER_MIRROR_SEGMENT = 12500 
+QUEUE_LEN = 4
 ERROR_RESULT_POS = 0
 SYNC_FAIL_POS = 1
 START_RINGBUFFER = 5
@@ -154,16 +154,38 @@ except IndexError:
 GPIO.output(y_enable_output, GPIO.HIGH)  
 GPIO.output(polygon_enable, GPIO.HIGH)
 # The expected hsync time, see constants TICKS PER MIRROR SEGMENT
-print("The expected hsync time is {}".format(12500))
-print("The first 16 hsync times are")
+print("The expected hsync time is {}".format(TICKS_PER_MIRROR_SEGMENT))
+print("The facet series are")
 # print the first 16 hsync times
-for item in range(0,16):
-    print(hsync_times[item])
+if len(hsync_times)<10:
+    print("Not enough sync times collected")
+    raise SystemExit
+
+# Goal is to print facet times by cohort, say the facet times are 2 5 6 3
+# it would print, i.e. it should order them so you can see if there is a regularity 
+#              2 2 2 2 
+#              5 5 5 5
+#              6 6 6 6 
+#              3 3 3 3
+
+offset = 100
+
+for item in range(0+offset,16*8+offset,16):
+    print("Item: {}".format(item))
+    for i in range(0,4):
+        facet_list = ""
+        for j in range(0,20,4):
+            facet_list+=str(hsync_times[item+i+j])+" "
+        print(facet_list)
+
 # let's see if we can create two bins, one for a single facet and the rest for the others
+
+hsync_times = hsync_times[offset:]
+
 bins=hsync_times[1:FACETS]
 cntrs = [0,0]
 for time in hsync_times:
-    if (12520-10)<time<(12520+10):
+    if time<12400:
         cntrs[0]+=1
     else:
         cntrs[1]+=1
@@ -175,7 +197,7 @@ for cntr in cntrs:
 
 difference = len(hsync_times)//4-cntrs[0]
 
-if abs(difference)>1:
+if abs(difference)>2:
     print("Difference of bin times seems incorrect {}".format(difference))
 else:
     print("Test passed, can bin all times")
