@@ -18,6 +18,7 @@ Work in Progress
 The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3. A resolution below 100 micrometers can be obtained. The stepper motors can be moved and homed via the limit switches. The scanhad is mounted on a frame. The power of the laser can be set via a 
 digital potentiometer.
 If someone wants to work with the project it is best to start with the script folder. Here different features can be tested like rotating the prism or setting the power of the laser. 
+The interpolator folder contains a script to calculate the data that needs to be sent to the laser head.
 
 Image used
 --------------
