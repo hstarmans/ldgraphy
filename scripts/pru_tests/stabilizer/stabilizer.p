@@ -252,7 +252,7 @@ wait_for_sync_hsync_seen:
 	         if it is the the outlier continue else go back to STATE_DATA_WAIT_FOR_SYNC */
 	; for testing
 	;JMP active_data_wait
-	MOV r5, 12510
+	MOV r5, 25015
 	QBLT active_data_wait, r5, r4
 
 	;; we step at the end of a data line, so here we should reset.

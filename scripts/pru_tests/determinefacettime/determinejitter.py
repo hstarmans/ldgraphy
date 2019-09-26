@@ -153,11 +153,17 @@ except IndexError:
 # disable motors
 GPIO.output(y_enable_output, GPIO.HIGH)  
 GPIO.output(polygon_enable, GPIO.HIGH)
+if len(hsync_times)<10:
+    print("Insufficient hsync times acquired, exiting")
+    raise SystemExit
+
+
+
 # The expected hsync time, see constants TICKS PER MIRROR SEGMENT
 print("The expected hsync time is {}".format(12500))
 print("The first 16 hsync times are")
 # print the first 16 hsync times
-for item in range(1,17):
+for item in range(2,17):
     print(hsync_times[-1*item])
 # let's see if we can create two bins, one for a single facet and the rest for the others
 bins=hsync_times[1:FACETS]

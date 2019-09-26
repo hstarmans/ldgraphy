@@ -34,7 +34,7 @@
 
 
 #define CPU_SPEED  200000000       // Hz  PRU is 200 MHz
-#define TICK_DELAY 1000              // CPU cycles between each loop         
+#define TICK_DELAY 200              // CPU cycles between each loop         
 
 
 // Each mirror segment is this number of pixel ticks long (only the first

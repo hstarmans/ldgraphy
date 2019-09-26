@@ -33,7 +33,7 @@
 #define ERROR_TIME_OVERRUN 3  // state machine did not finish within TICK_DELAY
 
 
-#define CPU_SPEED  200000000       // Hz  PRU is 200 MHz
+#define CPU_SPEED  200000000        // Hz  PRU is 200 MHz
 #define TICK_DELAY 100              // CPU cycles between each loop         
 
 
@@ -41,16 +41,16 @@
 // 8*SCANLINE_DATA_SIZE are filled with pixels, the rest is dead part of the
 // segment).
 
-#define TICKS_PER_MIRROR_SEGMENT 12500
-#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/400 // at least 600, too high gives errors 
-#define TICKS_START 3575 // start exposure at 20 percent
+#define TICKS_PER_MIRROR_SEGMENT 25000 
+#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/800 // at least 600, too high gives errors 
+#define TICKS_START 8750 // start exposure at 20 percent
 #define FACETS 4
 
 // The data per segment is sent in a bit-array. 
 #define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
-#define SCANLINE_DATA_SIZE 937   
+#define SCANLINE_DATA_SIZE 1874   
 #define SCANLINE_ITEM_SIZE (SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE)
-#define QUEUE_LEN 8
+#define QUEUE_LEN 4
 #define ERROR_RESULT_POS 0       // byte 0 = error
 #define SYNC_FAIL_POS   1        // byte 1-4 = sync fails
 #define START_RINGBUFFER 5       // byte 5 ... lines
