@@ -27,15 +27,15 @@ ERRORS += ['ERROR_TIME_OVERRUN']
 ERRORS = bidict(enumerate(ERRORS))
 RPM = 2400
 FACETS = 4
-SCANLINE_DATA_SIZE = 1874
+SCANLINE_DATA_SIZE = 937 
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
 QUEUE_LEN = 4
 ERROR_RESULT_POS = 0
 SYNC_FAIL_POS = 1
 START_RINGBUFFER = 5
-SINGLE_FACET = True
-DURATION = 30/4 # seconds
+SINGLE_FACET = False
+DURATION = 30/4*2 # seconds
 # end of laser_scribe-constants.h
 
 # line for multiple facets
@@ -53,7 +53,7 @@ TOTAL_LINES = RPM*DURATION/60*FACETS
 STEPSPERMM = 76.2
 MICROSTEPPING = 1
 #TOTAL_LINES = round(10*STEPSPERMM)
-DIRECTION = False # False is in the homing direction
+DIRECTION = True # False is in the homing direction
 
 y_direction_output = "P8_15"
 GPIO.setup(y_direction_output, GPIO.OUT)
@@ -63,9 +63,9 @@ else:
     GPIO.output(y_direction_output, GPIO.LOW)
 
 
-y_enable_output = "P8_11"
+y_enable_output = "P9_12"
 GPIO.setup(y_enable_output, GPIO.OUT)
-GPIO.output(y_enable_output, GPIO.HIGH) # motor disabled
+GPIO.output(y_enable_output, GPIO.LOW) # motor disabled
 
 
 if TOTAL_LINES <= QUEUE_LEN:
