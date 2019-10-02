@@ -385,6 +385,18 @@
 	};
 
 	fragment@2 {
+		target = <&ocp>;
+		__overlay__ {
+			P9_41 {
+						gpio-name = "P9_41";
+						gpio = <&gpio1 20 0>;
+						input;
+						dir-changeable;
+					};
+		};
+	};
+
+	fragment@3 {
 		target = <&spi0>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -403,14 +415,14 @@
 		};
 	};
 
-	fragment@3 {
+	fragment@4 {
 		target = <&epwmss2>;
 		__overlay__{
 			status = "okay";
 		};
 	};
 
-	fragment@4 {
+	fragment@5 {
 		target = <&ehrpwm2>;
 		__overlay__{
 			status = "okay";
