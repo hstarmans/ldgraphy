@@ -42,7 +42,7 @@ There should be something called uio_pruss. If it is not loaded load the module 
 ```
 sudo modprobe uio_pruss 
 ```
-To enable the uio_pruss module on each boot add it to /etc/modules where by adding the line uio_pruss.
+To enable the uio_pruss module on each boot add it to /etc/modules-load.d/modules.conf where by adding the line uio_pruss.
 An alternative is to load the PRU via the Python module.
 check 
 ```
@@ -66,7 +66,10 @@ If it doesnt' work, your old bootloader in the eMMC is blocking u-boot overlays,
 ```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
-Clone the forked [py-uio](https://github.com/hstarmans/py-uio), checkout the setup branch and install. Don't forget to copy `uio-pruss.rules` file to `/etc/udev/rules.d/` and reboot.
+Clone [py-uio](https://github.com/mvduin/py-uio) and copy `uio-pruss.rules` file to `/etc/udev/rules.d/` and reboot.
+```
+pip3 install --src . -e 'git+https://github.com/mvduin/py-uio.git#egg=py-uio'
+```
 
 
 Install pasm
@@ -74,7 +77,7 @@ Install pasm
 Install the PRU assembler and prussdrv library as follows:
 ```
 cd ~
-git clone git@github.com:beagleboard/am335x_pru_package.git
+git clone https://github.com/beagleboard/am335x_pru_package
 cd am335x_pru_package
 make
 make install
