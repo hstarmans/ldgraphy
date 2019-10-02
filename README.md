@@ -74,7 +74,7 @@ Install pasm
 Install the PRU assembler and prussdrv library as follows:
 ```
 cd ~
-git clone git@github.com:beagleboard/am335x_pru_package.git
+git clone https://github.com/beagleboard/am335x_pru_package
 cd am335x_pru_package
 make
 make install
