@@ -42,7 +42,7 @@ There should be something called uio_pruss. If it is not loaded load the module 
 ```
 sudo modprobe uio_pruss 
 ```
-To enable the uio_pruss module on each boot add it to /etc/modules where by adding the line uio_pruss.
+To enable the uio_pruss module on each boot add it to /etc/modules-load.d/modules.conf where by adding the line uio_pruss.
 An alternative is to load the PRU via the Python module.
 check 
 ```
