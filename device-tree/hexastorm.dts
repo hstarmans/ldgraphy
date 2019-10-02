@@ -71,7 +71,7 @@
 				        0x070 0x07  /* P9_11 spio-csy       */
                                         0x078 0x07  /* P9_12 stepper enable */
                                         0x048 0x27  /* P9_14 y-po           */
-					0x040 0x27  /* P9_15 X-po           */
+					/* 0x040 0x27   P9_15 X-po           */
 					0x04c 0x27  /* P9_16 z-po           */
 					0x044 0x07  /* P9_23 poly_en        */
 					0x184 0x26  /* P9_24 ph-diode       */
@@ -92,7 +92,7 @@
 		        
 			test_helper: helper {
 				compatible = "bone-pinmux-helper";
-				pinctrl-names = "default";
+				pinctrl-names = "default", "gpio";
 				pinctrl-0 = <&pinctrl_test>;
 				status = "okay";
 			};
