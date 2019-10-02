@@ -8,6 +8,7 @@ The position of the laser is determined and a stable line should be projected.
 The result of this test is measured with a camera with a neutral density filter
 and without a lens.
 """
+from time import sleep
 from ctypes import c_uint32
 
 from pyuio.ti.icss import Icss
@@ -31,11 +32,11 @@ SCANLINE_DATA_SIZE = 937
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
 TICKS_PER_MIRROR_SEGMENT = 12500 
-QUEUE_LEN = 4
+QUEUE_LEN = 8
 ERROR_RESULT_POS = 0
 SYNC_FAIL_POS = 1
 START_RINGBUFFER = 5
-SINGLE_FACET = True
+SINGLE_FACET = False
 DURATION = 10 # seconds
 # end of laser_scribe-constants.h
 
@@ -83,7 +84,7 @@ GPIO.output(polygon_enable, GPIO.LOW)
 
 
 pruss = Icss("/dev/uio/pruss/module")
-irq = Uio("/dev/uio/pruss/irq%d" % IRQ )
+irq = Uio("/dev/uio/pruss/irq%d" % IRQ, blocking=False)
 
 pruss.initialize()
 
@@ -111,7 +112,13 @@ while True and not pruss.core0.halted:
     if response >= TOTAL_LINES - QUEUE_LEN:
         data = [COMMANDS.inv['CMD_EXIT']]
     pruss.intc.out_enable_one(IRQ) 
-    irq.irq_recv()
+    while True:
+        try:
+            irq.irq_recv()
+            break
+        except BlockingIOError:
+            #sleep(1000)
+            sleep(1000/1000000.0)
     pruss.intc.ev_clear_one(pruss.intc.out_event[IRQ])
     pruss.intc.out_enable_one(IRQ)
     [command_index] = pruss.core0.dram.map(length = 1, offset = byte)

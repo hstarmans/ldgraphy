@@ -30,13 +30,18 @@ FACETS = 4
 SCANLINE_DATA_SIZE = 937 
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
-QUEUE_LEN = 4
+QUEUE_LEN = 8
 ERROR_RESULT_POS = 0
 SYNC_FAIL_POS = 1
 START_RINGBUFFER = 5
 SINGLE_FACET = False
 DURATION = 30/4*2 # seconds
-# end of laser_scribe-constants.h
+STEPSPERMM = 76.2
+MICROSTEPPING = 1 
+ENABLED = False  # False movement is disabled
+DIRECTION = True # False in the homing direction
+y_direction_output = "P8_15"
+y_enable_output = "P9_12"
 
 # line for multiple facets
 # data_byte = [int('10000000', 2)]*1+[int('00000000',2)]*31  # left bit, bit 7 read out first
@@ -48,14 +53,6 @@ LINE = data_byte*(SCANLINE_DATA_SIZE//32)+SCANLINE_DATA_SIZE%32*[int('00000000',
 print("length line is "+str(len(LINE)))
 TOTAL_LINES = RPM*DURATION/60*FACETS
 
-
-# Steps
-STEPSPERMM = 76.2
-MICROSTEPPING = 1
-#TOTAL_LINES = round(10*STEPSPERMM)
-DIRECTION = True # False is in the homing direction
-
-y_direction_output = "P8_15"
 GPIO.setup(y_direction_output, GPIO.OUT)
 if DIRECTION:
     GPIO.output(y_direction_output, GPIO.HIGH)
@@ -65,7 +62,10 @@ else:
 
 y_enable_output = "P9_12"
 GPIO.setup(y_enable_output, GPIO.OUT)
-GPIO.output(y_enable_output, GPIO.LOW) # motor disabled
+if ENABLED:
+    GPIO.output(y_enable_output, GPIO.LOW) # motor on
+else:
+    GPIO.output(y_enable_output, GPIO.HIGH)
 
 
 if TOTAL_LINES <= QUEUE_LEN:

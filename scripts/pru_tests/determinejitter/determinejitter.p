@@ -82,7 +82,7 @@
 	QBBS bit_is_set, r31, 16 	       ; direct PRU input
 	QBEQ no_hsync, v.last_hsync_bit, 1 ; we are only interested in 0->1 edge
 	MOV v.last_hsync_bit, 1
-	MOV v.hsync_time, v.global_time 
+        MOV v.hsync_time, v.global_time 
 	JMP to_label
 bit_is_set:
 	MOV v.last_hsync_bit, 0
@@ -165,7 +165,6 @@ STATE_IDLE:
 	MOV v.wait_countdown, SPINUP_TICKS
 	MOV v.polygon_time, 0
 	MOV v.state, STATE_SPINUP
-	MOV v.sync_laser_on_time, 0
 
 	;; prepare data
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
@@ -181,7 +180,7 @@ STATE_SPINUP:
 	JMP MAIN_LOOP_NEXT
 spinup_done:
 	SET r30.t7	                                ; laser pwm1 on
-	SET r30.t5                                  ; laser pwm2 on 
+	SET r30.t5                                      ; laser pwm2 on 
 	MOV v.wait_countdown, MAX_WAIT_STABLE_TICKS
 	MOV v.state, STATE_WAIT_STABLE
 	JMP MAIN_LOOP_NEXT
@@ -202,11 +201,11 @@ STATE_WAIT_STABLE:
 wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
 	MOV v.last_hsync_time, v.hsync_time 
+	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
 	CLR r30.t7     ; laser pwm1 off
 	CLR r30.t5     ; laser pwm2 off
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
-	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
-	MOV v.state, STATE_CONFIRM_STABLE
+        MOV v.state, STATE_CONFIRM_STABLE
 	JMP MAIN_LOOP_NEXT
 
 wait_stable_not_synced_yet:
@@ -242,8 +241,8 @@ STATE_DATA_WAIT_FOR_SYNC:
 wait_for_sync:
 	branch_if_hsync wait_for_sync_hsync_seen
 	JMP MAIN_LOOP_NEXT
-wait_for_sync_hsync_seen:
-	CLR r30.t7 ; hsync finished, laser pwm1 off
+wait_for_sync_hsync_seen: ; hsync finished
+	CLR r30.t7 ; laser pwm1 off
 	CLR r30.t5 ; laser pwm2 off
 	/* calculate hsync_time to enable binning */
 	SUB r4, v.hsync_time, v.last_hsync_time  ;TODO: you push to r4 and later push out to memory dangerous!!
@@ -281,7 +280,7 @@ data_run_data_output:
 
 	QBBS data_laser_set_on, r1.b0, v.bit_loop
 	CLR r30.t7 ; laser pwm1 off
-    CLR r30.t5 ; laser pwm2 off
+        CLR r30.t5 ; laser pwm2 off
 	JMP data_laser_set_done
 data_laser_set_on:
 	SET r30.t7 ; laser pwm1 on
@@ -357,10 +356,9 @@ MAIN_LOOP_NEXT:
 	ADD v.polygon_time, v.polygon_time, 1
 	MOV r1, (TICKS_PER_MIRROR_SEGMENT*FACETS/6)/2
 	QBLT mirror_toggle_done, r1, v.polygon_time
-	XOR r30, r30, (1<<2)
-	MOV v.polygon_time, 0
+        XOR r30, r30, (1<<2)
+        MOV v.polygon_time, 0
 mirror_toggle_done:
-
 	;; GPIO out, once per loop.
 	JMP MAIN_LOOP
 

@@ -34,7 +34,7 @@
 
 
 #define CPU_SPEED  200000000       // Hz  PRU is 200 MHz
-#define TICK_DELAY 100              // CPU cycles between each loop         
+#define TICK_DELAY 120              // CPU cycles between each loop         
 
 
 // Each mirror segment is this number of pixel ticks long (only the first
@@ -42,7 +42,9 @@
 // segment).
 
 #define TICKS_PER_MIRROR_SEGMENT 12500
-#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/100 // at least 600, too high gives errors 
+#define JITTER_THRESH TICKS_PER_MIRROR_SEGMENT/400  // at least 600, stage one allow 
+#define JITTER_ALLOW TICKS_PER_MIRROR_SEGMENT/3000  // define
+
 #define TICKS_START 4375 // start exposure at 20 percent
 #define FACETS 4
 
@@ -50,7 +52,7 @@
 #define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
 #define SCANLINE_DATA_SIZE 937
 #define SCANLINE_ITEM_SIZE (SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE)
-#define QUEUE_LEN 4 
+#define QUEUE_LEN 8 
 #define ERROR_RESULT_POS 0       // byte 0 = error
 #define SYNC_FAIL_POS   1        // byte 1-4 = sync fails
 #define START_RINGBUFFER 5       // byte 5 ... lines

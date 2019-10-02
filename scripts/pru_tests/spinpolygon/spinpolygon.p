@@ -5,7 +5,7 @@
 #define INS_PER_DELAY_LOOP 2
 #define FREQUENCY 450; 350 herts is 21000 rpm, dont use more than 12 for new polygons (different for other prism!)
 #define DELAY  1000 / (FREQUENCY * 2) * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
-#define DURATION 15 ; seconds
+#define DURATION 30 ; seconds
 #define TICKS DURATION * FREQUENCY
 
 START:
