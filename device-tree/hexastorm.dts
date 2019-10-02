@@ -71,7 +71,6 @@
 				        0x070 0x07  /* P9_11 spio-csy       */
                                         0x078 0x07  /* P9_12 stepper enable */
                                         0x048 0x27  /* P9_14 y-po           */
-					/* 0x040 0x27   P9_15 X-po           */
 					0x04c 0x27  /* P9_16 z-po           */
 					0x044 0x07  /* P9_23 poly_en        */
 					0x184 0x26  /* P9_24 ph-diode       */
@@ -83,6 +82,18 @@
 					0x164 0x07  /* P9_42 x-dir          */
 				>;
 			};
+			/* P9_15 this pin is read out via python */
+            P9_15_default_pin: pinmux_P9_15_default_pin {
+                pinctrl-single,pins = <0x040  0x27>; };     /* Mode 7, Pull-Down, RxActive */
+            P9_15_gpio_pin: pinmux_P9_15_gpio_pin {
+                pinctrl-single,pins = <0x040  0x2F>; };     /* Mode 7, RxActive */
+            P9_15_gpio_pu_pin: pinmux_P9_15_gpio_pu_pin {
+                pinctrl-single,pins = <0x040  0x37>; };     /* Mode 7, Pull-Up, RxActive */
+            P9_15_gpio_pd_pin: pinmux_P9_15_gpio_pd_pin {
+                pinctrl-single,pins = <0x040  0x27>; };     /* Mode 7, Pull-Down, RxActive */
+            P9_15_pwm_pin: pinmux_P9_15_pwm_pin {
+                pinctrl-single,pins = <0x040  0x26>; };     /* Mode 6, Pull-Down, RxActive */
+
 		};
 	};
 
@@ -92,10 +103,20 @@
 		        
 			test_helper: helper {
 				compatible = "bone-pinmux-helper";
-				pinctrl-names = "default", "gpio";
+				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_test>;
 				status = "okay";
 			};
+			P9_15_pinmux {
+                compatible = "bone-pinmux-helper";
+                status = "okay";
+                pinctrl-names = "default", "gpio", "gpio_pu", "gpio_pd", "pwm";
+                pinctrl-0 = <&P9_15_default_pin>;
+                pinctrl-1 = <&P9_15_gpio_pin>;
+                pinctrl-2 = <&P9_15_gpio_pu_pin>;
+                pinctrl-3 = <&P9_15_gpio_pd_pin>;
+                pinctrl-4 = <&P9_15_pwm_pin>;
+            };
 		};
 
 	};
