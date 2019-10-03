@@ -387,78 +387,12 @@
 	fragment@2 {
 		target = <&ocp>;
 		__overlay__ {
-			P8_14 {
-					gpio-name = "P8_14";
-					gpio = <&gpio1 26 0>;
-					input;
-					dir-changeable;
-				};
-			P8_15 {
-				gpio-name = "P8_15";
-				gpio = <&gpio2 15 0>;
-				input;
-				dir-changeable;
-			};
-			P8_16 {
-				gpio-name = "P8_16";
-				gpio = <&gpio2 14 0>;
-				input;
-				dir-changeable;
-			};
-			P8_17 {
-				gpio-name = "P8_17";
-				gpio = <&gpio1 27 0>;
-				input;
-				dir-changeable;
-			};
-			P9_11 {
-					gpio-name = "P9_11";
-					gpio = <&gpio1 30 0>;
-					input;
-					dir-changeable;
-				};
-			P9_12 {
-					gpio-name = "P9_12";
-					gpio = <&gpio2 28 0>;
-					input;
-					dir-changeable;
-				};
-			P9_14 {
-					gpio-name = "P9_14";
-					gpio = <&gpio2 18 0>;
-					input;
-					dir-changeable;
-				};
-			P9_15 {
-					gpio-name = "P9_15";
-					gpio = <&gpio2 16 0>;
-					input;
-					dir-changeable;
-				};
-			P9_16 {
-					gpio-name = "P9_16";
-					gpio = <&gpio2 19 0>;
-					input;
-					dir-changeable;
-				};
-			P9_17 {
-					gpio-name = "P9_17";
-					gpio = <&gpio1 5 0>;
-					input;
-					dir-changeable;
-				};
 			P9_41 {
 						gpio-name = "P9_41";
 						gpio = <&gpio1 20 0>;
 						input;
 						dir-changeable;
 					};
-			P9_42 {
-					gpio-name = "P9_42";
-					gpio = <&gpio1 7 0>;
-					input;
-					dir-changeable;
-				};
 		};
 	};
 
