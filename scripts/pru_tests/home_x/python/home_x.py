@@ -4,7 +4,7 @@ import Adafruit_BBIO.GPIO as GPIO
 # INPUT
 XSTEPSPERMM = 76.2
 STEPSPEED = round(1*XSTEPSPERMM)
-STEPS_LIMIT = round(1*XSTEPSPERMM)
+STEPS_LIMIT = round(100*XSTEPSPERMM)
 DIRECTION = False # false is direction home for x-axis
 
 x_direction_pin = "P9_42"
