@@ -25,12 +25,12 @@ To Do
 One program is executed on the CPU side which checks for events and sends lines to the PRU.
 This program has influence on the execution of the PRU. This can be deduced from the noise produced by the mirror motor.
 A time-out has been set which partly mitigates this problem. Still it exists!!
-GPIO input doesn't work via python.
+Laser turns on upon boot seems to be affected by overlay.
 
 
 Image used
 --------------
-The following image was used http://debian.beagleboard.org/images/bone-debian-9.5-iot-armhf-2018-10-07-4gb.img.xz
+The following image was used https://rcn-ee.net/rootfs/bb.org/testing/2019-09-08/stretch-iot/bone-debian-9.10-iot-armhf-2019-09-08-4gb.img.xz
 
 Enable the PRU
 --------------
