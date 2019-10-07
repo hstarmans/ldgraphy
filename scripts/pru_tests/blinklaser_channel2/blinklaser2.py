@@ -2,7 +2,7 @@
 """ blinklaser2.py - test script for the Firestarter
 blinks the laser 3 times with a period of 6 seconds
 """
-from pyuio.ti.icss import Icss
+from uio.ti.icss import Icss
 
 pruss = Icss('/dev/uio/pruss/module')
 pruss.initialize()
