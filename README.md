@@ -107,7 +107,7 @@ A good pinout view of the [beagle bone](https://beagleboard.org/bone) is availab
 
 Slicer
 -------
-The STL capabilities of the slicer has been removed for now. The slicer used [VTK](https://vtk.org/).
+The STL capabilities of the slicer have been removed for now. The slicer used [VTK](https://vtk.org/).
 Look into the git history for inspiration.
 ```
 sudo apt install imagemagick
