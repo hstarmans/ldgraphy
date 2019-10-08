@@ -3,7 +3,7 @@
 moves the x-motor for a given amount of steps and stepspeed
 until it hits the x-home switch
 """
-from pyuio.ti.icss import Icss
+from uio.ti.icss import Icss
 import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
@@ -46,7 +46,7 @@ print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
 GPIO.output(enable_pin, GPIO.HIGH)
-if pruss.core0.r2:
+if pruss.core0.r10:
     print("Homing failed, did not touch switch")
 else:
     print("Homing successfull")

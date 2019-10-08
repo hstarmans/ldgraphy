@@ -8,7 +8,7 @@ The laser is turned off.
 """
 from ctypes import c_uint32
 import Adafruit_BBIO.GPIO as GPIO
-from pyuio.ti.icss import Icss
+from uio.ti.icss import Icss
 
 GPIO.setup("P9_23", GPIO.OUT)
 # enable polygon motor

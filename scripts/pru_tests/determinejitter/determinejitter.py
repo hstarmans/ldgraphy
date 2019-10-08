@@ -11,8 +11,8 @@ and without a lens.
 from time import sleep
 from ctypes import c_uint32
 
-from pyuio.ti.icss import Icss
-from pyuio.uio import Uio
+from uio.ti.icss import Icss
+from uio.ti.uio import Uio
 from bidict import bidict
 import Adafruit_BBIO.GPIO as GPIO
 

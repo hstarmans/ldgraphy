@@ -3,7 +3,7 @@
 moves the x-motor for a given amount of steps and stepspeed
 until it hits the x-home switch
 """
-from pyuio.ti.icss import Icss
+from uio.ti.icss import Icss
 import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 

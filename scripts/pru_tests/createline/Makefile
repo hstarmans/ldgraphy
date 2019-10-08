@@ -1,5 +1,5 @@
 COMPILER=pasm 
-FILENAME=spinpolygon
+FILENAME=createline
 
 .PHONY: clean all
 

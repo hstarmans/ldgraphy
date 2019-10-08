@@ -22,9 +22,12 @@ The interpolator folder contains a script to calculate the data that needs to be
 
 To Do
 -------------
-One program is executed on the CPU side which checks for events and sends lines to the PRU.
-This program has influence on the execution of the PRU. This can be deduced from the noise produced by the mirror motor.
-A time-out has been set which partly mitigates this problem. Still it exists!!
+* One program is executed on the CPU side which checks for events and sends lines to the PRU. This program has influence on the execution of the PRU. This can be deduced from
+ the noise produced by the mirror motor. A time-out has been set which partly mitigates this problem. Still it exists!!
+* The stepper motors are initialized by a C++ library, this library gives an error for 
+  the x-stepper and not the other steppers. The library works for all the steppers.
+  It could indicate a problem with the select pin as the x-stepper uses the "default
+  pin".
 
 
 Image used

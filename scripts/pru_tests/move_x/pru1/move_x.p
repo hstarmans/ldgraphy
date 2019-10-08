@@ -1,14 +1,12 @@
 .origin 0
 .entrypoint START
 
-#define CONST_PRUDRAM C24
 #define GPIO_3_ADDR 0x481AE000
 #define XSTEP 20
 #define GPIO_DATAOUT 0x13c
 #define GPIO_SETDATAOUT 0x194
 #define GPIO_CLEARDATAOUT 0x190
 #define GPIO_OE 0x134
-#define DURATION 20000
 
 .struct Params
         .u32 steps
@@ -23,7 +21,7 @@ START:
     SBCO r0, C4, 4, 4	
 
     MOV r3, GPIO_3_ADDR | GPIO_OE
-    ; set direction to otput
+    ; set direction to output
     LBBO r2, r3, 0, 4
     CLR r2, r2, XSTEP
     SBBO r2, r3, 0, 4
