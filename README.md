@@ -95,20 +95,15 @@ make install
 
 Device tree overlay
 --------------------
-To properly prepare the GPIOs and the PRU to be used, you have to install
-the device tree overlay on your Beaglebone.
-Compile the DTS to a DTBO and move it to /lib/firmware folder.
-Load the DTS via uboot with the custom cape variable, dtboverlay.
-In the laser test we have
+Hexastorm works with cape universal. The pins are configured by applying the file hexastorm.bbio from the config-pin directory.
 ```
-dtb_overlay=/lib/firmware/hexastorm.dtbo
+config-pin -f hexastorm.bbio
 ```
-You can check whether it is working via;
+The status of a pin can be obtained via 
 ```
-export PINS=/sys/kernel/debug/pinctrl/44e10800.pinmux/pins
-cat $PINS | grep 'pin 101'
+config-pin -q 9.91
 ```
-A good pinout view of the beagle bone is available here: <br/>
+A good pinout view of the [beagle bone](https://beagleboard.org/bone) is available here: <br/>
 
 [P8 header](http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP8Header.pdf) <br/>
 [P9 header](http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP9Header.pdf) <br/>
@@ -116,52 +111,10 @@ A good pinout view of the beagle bone is available here: <br/>
 
 Slicer
 -------
-The STL capabilities of the slicer has been removed for now. Look into the git history for inspiration.
+The STL capabilities of the slicer has been removed for now. The slicer used [VTK](https://vtk.org/).
+Look into the git history for inspiration.
 ```
 sudo apt install imagemagick
 ```
-
-
-
-Tests
---------------
-Laser <br />
-Plug in the 5V and 12V source for the cape, so the laser driver has power.
-Hook the fan to the board, it should spin. Run the following lines of code;
-```
-echo 110 > /sys/class/gpio/export
-echo high > /sys/class/gpio/gpio110/direction
-echo low > /sys/class/gpio/gpio110/direction
-cat /sys/class/gpio/gpio110/direction
-cat /sys/class/gpio/gpio110/value
-ls -al /sys/class/gpio
-```
-If the laserdiode does not turn on it could be broken or the laserdiode driver could be broken.
-Hook the fan to the laserdiode output and see if it spins. If it does the laserdiode is broken.
-There is also a test script, 
-ldgraphy/scripts/firestarter_tests/laserdriver.py <br/>
-Polygon driver <br/>
-Run the test script ldgraphy/scripts/firestarter_tests/polydriver.py <br/>
-The polygon should spin. Two types of polygon were considered.
-The MASQ6DF15RS which are sold with a maximum speed of 24000 RPM although a label indicates they spin at 20787 RPM. A Chinese sticker has been placed to cover this number. The chip used is Panasonic AN44000A. The MASQ0DF9RV rotate at 21000 RPM. The chip used is NBC3111.
-It was found at that both the input and output of these chips are different and the Panasonic chip rotates the polygon faster than what would be expected of a given pulse rate. We therefore chose to proceed with the NBC3111. The pulse pin of the Panasonic is AN44000A.
-
-Photodiode <br/>
-The python library is broken, so a python test script could not be made.
-Turn on the laser via the command line. 
-```
-echo 110 > /sys/class/gpio/export
-echo high > /sys/class/gpio/gpio110/direction
-```
-Rotate the prism and measure the photodiode input. Pin 20 or pin 116 can be used.
-```
-echo 20 > /sys/class/gpio/export
-echo in > /sys/class/gpio/gpio20/direction
-cat /sys/class/gpio/gpio20/value
-```
-
-
-
-
 
 [case-pic]: https://www.hexastorm.com/static/laserscanner.jpg
