@@ -9,8 +9,8 @@ import Adafruit_BBIO.GPIO as GPIO
 # INPUT
 XSTEPSPERMM = 76.2 
 STEPSPEED = round(1*XSTEPSPERMM)
-STEPS =  round(1000*XSTEPSPERMM) 
-DIRECTION = False   # false is in direction home
+STEPS =  round(1*XSTEPSPERMM) 
+DIRECTION = True   # false is in direction home
 
 x_direction_pin = "P9_42"
 enable_pin = "P9_12"
@@ -38,14 +38,13 @@ class Params( ctypes.Structure ):
 
 pruss = Icss('/dev/uio/pruss/module')
 pruss.initialize()
-params0 = pruss.core0.dram.map(Params)
+params0 = pruss.core1.dram.map(Params)
 params0.steps = round(STEPS)
 params0.halfperiodstep = round(HALF_PERIOD_STEP)
-pruss.core0.load('move_x.bin')
-pruss.core0.run()
+pruss.core1.load('move_x.bin')
+pruss.core1.run()
 print('Waiting for move to finish')
-while not pruss.core0.halted:
+while not pruss.core1.halted:
     pass
 
-#TODO: doesn't work and mixes up measurement
-#GPIO.output(enable_pin, GPIO.HIGH)
+GPIO.output(enable_pin, GPIO.HIGH)

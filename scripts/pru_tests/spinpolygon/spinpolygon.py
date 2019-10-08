@@ -2,7 +2,7 @@
 """ spinpolygon.py - test script for the firestarter board
 It spins the polygon at a rate of 1000 Hz for 5 seconds
 """
-from pyuio.ti.icss import Icss
+from uio.ti.icss import Icss
 import Adafruit_BBIO.GPIO as GPIO
 from time import sleep
 

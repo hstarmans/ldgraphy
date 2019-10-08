@@ -10,6 +10,12 @@
 #define GPIO_OE 0x134
 #define DURATION 20000
 
+.struct Params
+        .u32 steps
+        .u32 halfperiodstep
+.ends
+
+.assign Params, r6, r7, params
 
 START:
     LBCO r0, C4, 4, 4				
@@ -17,7 +23,7 @@ START:
     SBCO r0, C4, 4, 4	
 
     MOV r3, GPIO_3_ADDR | GPIO_OE
-    // set direction to otput
+    ; set direction to otput
     LBBO r2, r3, 0, 4
     CLR r2, r2, XSTEP
     SBBO r2, r3, 0, 4
@@ -26,16 +32,19 @@ START:
     MOV r3, GPIO_3_ADDR | GPIO_SETDATAOUT
     MOV r4, GPIO_3_ADDR | GPIO_CLEARDATAOUT
 
-    MOV r1, 10000
+    ; load parameters
+    LBCO &params, c24, 0, SIZE(params)
+    MOV r1, params.steps
+
 STEPLOOP:
     SBBO r2, r3, 0, 4
-    MOV r0, DURATION
+    MOV r0, params.halfperiodstep
 DELAYON:
     SUB r0, r0, 1
     QBNE DELAYON, r0, 0
     
     SBBO r2, r4, 0, 4
-    MOV r0, DURATION
+    MOV r0, params.halfperiodstep
 DELAYOFF:
     SUB r0, r0, 1
     QBNE DELAYOFF, r0, 0
