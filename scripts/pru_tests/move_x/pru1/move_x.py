@@ -2,14 +2,14 @@
 """ move_x.py - test script for the Firestarter
 moves the x-motor for a given amount of steps and stepspeed
 """
-from pyuio.ti.icss import Icss
+from uio.ti.icss import Icss
 import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
 # INPUT
 XSTEPSPERMM = 76.2 
 STEPSPEED = round(1*XSTEPSPERMM)
-STEPS =  round(1*XSTEPSPERMM) 
+STEPS =  round(1000*XSTEPSPERMM) 
 DIRECTION = False   # false is in direction home
 
 x_direction_pin = "P9_42"
