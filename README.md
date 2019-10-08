@@ -25,7 +25,6 @@ To Do
 One program is executed on the CPU side which checks for events and sends lines to the PRU.
 This program has influence on the execution of the PRU. This can be deduced from the noise produced by the mirror motor.
 A time-out has been set which partly mitigates this problem. Still it exists!!
-Laser turns on upon boot seems to be affected by overlay.
 
 
 Image used
@@ -66,11 +65,22 @@ If it doesnt' work, your old bootloader in the eMMC is blocking u-boot overlays,
 ```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
+Hexastorm works with cape universal. The pins are configured by applying the file hexastorm.bbio from the config-pin directory.
+```
+config-pin -f hexastorm.bbio
+```
 Clone [py-uio](https://github.com/mvduin/py-uio) and copy `uio-pruss.rules` file to `/etc/udev/rules.d/` and reboot.
 ```
 pip3 install --src . -e 'git+https://github.com/mvduin/py-uio.git#egg=py-uio'
 ```
-
+Install Adafruit_BBIO
+```
+pip3 install Adafruit_BBIO
+```
+Install Adafruit_GPIO
+```
+pip3 install Adafruit_GPIO
+```
 
 Install pasm
 ------------
