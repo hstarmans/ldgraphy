@@ -65,10 +65,6 @@ If it doesnt' work, your old bootloader in the eMMC is blocking u-boot overlays,
 ```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
-Hexastorm works with cape universal. The pins are configured by applying the file hexastorm.bbio from the config-pin directory.
-```
-config-pin -f hexastorm.bbio
-```
 Clone [py-uio](https://github.com/mvduin/py-uio) and copy `uio-pruss.rules` file to `/etc/udev/rules.d/` and reboot.
 ```
 pip3 install --src . -e 'git+https://github.com/mvduin/py-uio.git#egg=py-uio'
@@ -95,7 +91,7 @@ make install
 
 Device tree overlay
 --------------------
-Hexastorm works with cape universal. The pins are configured by applying the file hexastorm.bbio from the config-pin directory.
+Hexastorm works with cape universal. Ensure you allow overlays at ```/boot/uEnv.txt``` and have cape universal enabled. The pins are configured by applying the file hexastorm.bbio from the config-pin directory.
 ```
 config-pin -f hexastorm.bbio
 ```
