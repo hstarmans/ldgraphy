@@ -207,7 +207,7 @@ wait_stable_hsync_seen:
 	CLR r30.t5     ; laser pwm2 off
 	/* zeller used something different but this didn't work with all motors */
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
-	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
+	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_THRESH, TICKS_PER_MIRROR_SEGMENT+JITTER_THRESH
 	MOV v.state, STATE_CONFIRM_STABLE
 	JMP MAIN_LOOP_NEXT
 

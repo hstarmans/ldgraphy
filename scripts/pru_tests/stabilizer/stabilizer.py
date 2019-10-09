@@ -8,10 +8,11 @@ The position of the laser is determined and a stable line should be projected.
 The result of this test is measured with a camera with a neutral density filter
 and without a lens.
 """
+from time import sleep
 from ctypes import c_uint32
 
-from pyuio.ti.icss import Icss
-from pyuio.uio import Uio
+from uio.ti.icss import Icss
+from uio.device import Uio
 from bidict import bidict
 import Adafruit_BBIO.GPIO as GPIO
 
@@ -82,7 +83,7 @@ GPIO.output(polygon_enable, GPIO.LOW)
 
 
 pruss = Icss("/dev/uio/pruss/module")
-irq = Uio("/dev/uio/pruss/irq%d" % IRQ )
+irq = Uio("/dev/uio/pruss/irq%d" % IRQ, blocking=False)
 
 pruss.initialize()
 
@@ -106,7 +107,12 @@ while True and not pruss.core0.halted:
     if response >= TOTAL_LINES - QUEUE_LEN:
         data = [COMMANDS.inv['CMD_EXIT']]
     pruss.intc.out_enable_one(IRQ) 
-    irq.irq_recv()
+    while True:
+        result = irq.irq_recv()
+        if result:
+            break
+        else:
+            sleep(1E-3)
     pruss.intc.ev_clear_one(pruss.intc.out_event[IRQ])
     pruss.intc.out_enable_one(IRQ)
     [command_index] = pruss.core0.dram.map(length = 1, offset = byte)

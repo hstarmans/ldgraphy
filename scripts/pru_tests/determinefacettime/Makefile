@@ -1,5 +1,5 @@
 COMPILER = pasm 
-FILENAME = determinejitter
+FILENAME = determinefacettime
 
 .PHONY: clean all
 

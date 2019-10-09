@@ -201,7 +201,7 @@ STATE_WAIT_STABLE:
 wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
 	MOV v.last_hsync_time, v.hsync_time 
-	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
+	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_THRESH, TICKS_PER_MIRROR_SEGMENT+JITTER_THRESH
 	CLR r30.t7     ; laser pwm1 off
 	CLR r30.t5     ; laser pwm2 off
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then

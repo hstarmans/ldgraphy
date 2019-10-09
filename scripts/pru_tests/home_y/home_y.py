@@ -3,7 +3,7 @@
 moves the y-motor for a given amount of steps and stepspeed
 unless it hits the y-home switch
 """
-from pyuio.ti.icss import Icss
+from uio.ti.icss import Icss
 import ctypes
 import Adafruit_BBIO.GPIO as GPIO
 
@@ -54,3 +54,4 @@ if pruss.core0.r2:
 else:
     print("Touched home switch")
 
+GPIO.output(enable_pin, GPIO.HIGH)

@@ -35,4 +35,5 @@ for step in range(0,STEPS_LIMIT):
     GPIO.output(step_pin, GPIO.HIGH)
     if step == STEPS_LIMIT-1:
         print("Can't home")
-    
+
+GPIO.output(enable_pin, GPIO.HIGH)

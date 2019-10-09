@@ -5,7 +5,7 @@
 #define INS_PER_DELAY_LOOP 2
 #define FREQUENCY 450 ; Hertz maximum is 2.1 kHz
 #define DELAY  1000 / (FREQUENCY * 2) * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
-#define DURATION 1500 ; seconds
+#define DURATION 5 ; seconds
 #define TICKS DURATION * FREQUENCY
 
 START:

@@ -51,5 +51,4 @@ print('Waiting for move to finish')
 while not pruss.core0.halted:
     pass
 
-#TODO doesn't work, mixes up the measurement
-#GPIO.output(enable_output, GPIO.HIGH)  # disable motors
+GPIO.output(enable_pin, GPIO.HIGH)  

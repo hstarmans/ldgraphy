@@ -1,17 +1,13 @@
 #!/usr/bin/python3
-""" stabilizer.py - test script for the Firestarter board
-A single line is uploaded to the laser scanner.
-The middle pixel of this line is on and the other pixels are off.
-The data is uploaded to the PRU.
-The polygon is spun at a rate of x Hz for x seconds.
-The position of the laser is determined and a stable line should be projected.
-The result of this test is measured with a camera with a neutral density filter
-and without a lens.
+""" determinefacettime.py - test script for the Firestarter board
+Script is similar to determinejitter.py. The idea is that the ticks per facet are determined. The way the polygon is sped up is also slightly different. This 
+script might be useful if different polygon motors are used but can most likely be removed.
 """
+from time import sleep
 from ctypes import c_uint32
 
 from uio.ti.icss import Icss
-from pyuio.uio import Uio
+from uio.device import Uio
 from bidict import bidict
 import Adafruit_BBIO.GPIO as GPIO
 
@@ -83,7 +79,7 @@ GPIO.output(polygon_enable, GPIO.LOW)
 
 
 pruss = Icss("/dev/uio/pruss/module")
-irq = Uio("/dev/uio/pruss/irq%d" % IRQ )
+irq = Uio("/dev/uio/pruss/irq%d" % IRQ, blocking=False)
 
 pruss.initialize()
 
@@ -91,7 +87,7 @@ pruss.intc.ev_ch[PRU0_ARM_INTERRUPT] = IRQ
 pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
 pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
 
-pruss.core0.load('./determinejitter.bin')
+pruss.core0.load('./determinefacettime.bin')
 pruss.core0.dram.write(data)
 pruss.core0.run()
 print("running core and uploaded data")
@@ -111,7 +107,12 @@ while True and not pruss.core0.halted:
     if response >= TOTAL_LINES - QUEUE_LEN:
         data = [COMMANDS.inv['CMD_EXIT']]
     pruss.intc.out_enable_one(IRQ) 
-    irq.irq_recv()
+    while True:
+        result = irq.irq_recv()
+        if result:
+            break
+        else:
+            sleep(1E-3)
     pruss.intc.ev_clear_one(pruss.intc.out_event[IRQ])
     pruss.intc.out_enable_one(IRQ)
     [command_index] = pruss.core0.dram.map(length = 1, offset = byte)

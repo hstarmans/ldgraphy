@@ -17,8 +17,8 @@ Work in Progress
 ----------------
 The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3. A resolution below 100 micrometers can be obtained. The stepper motors can be moved and homed via the limit switches. The scanhad is mounted on a frame. The power of the laser can be set via a 
 digital potentiometer.
-If someone wants to work with the project it is best to start with the script folder. Here different features can be tested like rotating the prism or setting the power of the laser. 
-The interpolator folder contains a script to calculate the data that needs to be sent to the laser head.
+If someone wants to work with the project it is best to start with the script folder. Here different features can be tested like rotating the prism or setting the power of the laser. The interpolator folder contains a script to calculate the data that needs to be sent to the laser head.
+This script cannot be run on the beaglebone as it currently blows through the memory.
 
 To Do
 -------------
@@ -28,6 +28,10 @@ To Do
   the x-stepper and not the other steppers. The library works for all the steppers.
   It could indicate a problem with the select pin as the x-stepper uses the "default
   pin".
+* use asyncio loop for stabilizer
+* check the speed of polygon in hertz 
+* add a homing procedure for the z-axis
+* add gpio script for z-axis move
 
 
 Image used
@@ -44,13 +48,12 @@ There should be something called uio_pruss. If it is not loaded load the module 
 ```
 sudo modprobe uio_pruss 
 ```
-To enable the uio_pruss module on each boot add it to /etc/modules-load.d/modules.conf where by adding the line uio_pruss.
+To enable the uio_pruss module on each boot add it to /etc/modules-load.d/modules.conf by adding the line uio_pruss.
 An alternative is to load the PRU via the Python module.
-check 
+Check if you have /dev/uio1 /dev/uio2 etc. 
 ```
 ls /dev/uio*
 ```
-and see if you have /dev/uio1 /dev/uio2 etc.
 If not modify /boot/uEnv.txt, comment the proc line
 ```
 uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo 
@@ -60,11 +63,11 @@ uncomment pruss line
 uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo .
 ```
 Reboot and check again.
-You can get an overview your config via
+You can get an overview of your beaglebone configuration via
 ```
 sudo /opt/scripts/tools/version.sh .
 ```
-If it doesnt' work, your old bootloader in the eMMC is blocking u-boot overlays, you can fix it via:
+If this doesn't change, your old bootloader in the eMMC might be blocking u-boot overlays, you can fix it via:
 ```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
@@ -72,13 +75,9 @@ Clone [py-uio](https://github.com/mvduin/py-uio) and copy `uio-pruss.rules` file
 ```
 pip3 install --src . -e 'git+https://github.com/mvduin/py-uio.git#egg=py-uio'
 ```
-Install Adafruit_BBIO
+Install Adafruit_BBIO, Adafruit_GPIO and bidict.
 ```
-pip3 install Adafruit_BBIO
-```
-Install Adafruit_GPIO
-```
-pip3 install Adafruit_GPIO
+pip3 install Adafruit_BBIO Adafruit_GPIO bidict
 ```
 
 Install pasm

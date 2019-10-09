@@ -12,7 +12,7 @@ from time import sleep
 from ctypes import c_uint32
 
 from uio.ti.icss import Icss
-from uio.ti.uio import Uio
+from uio.device import Uio
 from bidict import bidict
 import Adafruit_BBIO.GPIO as GPIO
 
@@ -113,12 +113,11 @@ while True and not pruss.core0.halted:
         data = [COMMANDS.inv['CMD_EXIT']]
     pruss.intc.out_enable_one(IRQ) 
     while True:
-        try:
-            irq.irq_recv()
+        result  = irq.irq_recv()
+        if result:
             break
-        except BlockingIOError:
-            #sleep(1000)
-            sleep(1000/1000000.0)
+        else:
+            sleep(1E-3)          
     pruss.intc.ev_clear_one(pruss.intc.out_event[IRQ])
     pruss.intc.out_enable_one(IRQ)
     [command_index] = pruss.core0.dram.map(length = 1, offset = byte)
