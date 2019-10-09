@@ -10,8 +10,8 @@ from ctypes import c_uint32, Structure
 from os.path import join, dirname, realpath
 import pickle
 
-from pyuio.ti.icss import Icss
-from pyuio.uio import Uio
+from uio.ti.icss import Icss
+from uio.device import Uio
 import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_GPIO.I2C as I2C
 import numpy as np
@@ -148,7 +148,7 @@ class Machine:
         '''
         self.IRQ = 2
         self.pruss = Icss('/dev/uio/pruss/module')
-        self.irq = Uio("/dev/uio/pruss/irq%d" % self.IRQ )
+        self.irq = Uio("/dev/uio/pruss/irq%d" % self.IRQ, blocking=False)
         self.pruss.initialize()
 
 
@@ -156,19 +156,17 @@ class Machine:
         '''
         creates dictionary for motor pins and disables motors
         '''
-        self.pins = {'y_dir': "P9_12",
-                     'y_enable' : "P9_15",
-                     'x_dir': "P9_20",
-                     'x_enable': "P9_19"}
+        self.pins = {'x_dir': "P9_42",
+                     'y_dir': "P8_15",
+                     'z_dir': "P8_17",
+                     'step_enable': "P9_12",
+                     'prism_enable': "P9_23"}
 
         for key, value in self.pins.items():
             GPIO.setup(value, GPIO.OUT)
-        # disable motors
-        GPIO.output(self.pins['x_dir'], GPIO.HIGH)
-        GPIO.output(self.pins['y_dir'], GPIO.HIGH)
 
 
-    def write_params(self, distance, speed):
+    def write_params(self, distance, speed, core=0):
         '''
         writes parameters to pru0
 
@@ -176,64 +174,77 @@ class Machine:
         in homing distance defines a limit
         :param distance; distance in mm
         :param speed; speed in mm/s
+        :param core; pru core map parameters to
         '''
         class Params( Structure ):
             _fields_ = [
                     ("steps", c_uint32),  # upper limit
                     ("halfperiodstep", c_uint32) # speed
         ]
-        params0 = self.pruss.core0.dram.map(Params)
+        if core == 0:
+            params = self.pruss.core0.dram.map(Params)
+        else:
+            params = self.pruss.core1.dram.map(Params)
         # round(np.float64(3.0)) -> 3.0, round(3.0) -> 3
-        params0.steps = int(round(distance * self.steps_per_mm))
+        params.steps = int(round(distance * self.steps_per_mm))
         CPU_SPEED = 200E6
         INST_PER_LOOP = 2
-        params0.halfperiodstep = int(round(CPU_SPEED
+        params.halfperiodstep = int(round(CPU_SPEED
             /(2*speed*self.steps_per_mm*INST_PER_LOOP)))
 
 
-    def runcore0(self, direction):
-        if direction == 'x':
-            enablepin = self.pins['x_enable']
-        else:
-            enablepin = self.pins['y_enable']
-        GPIO.output(enablepin, GPIO.LOW)
-        self.pruss.core0.run()
-        while not self.pruss.core0.halted:
-            pass
-        GPIO.output(enablepin, GPIO.HIGH)
+    def enable_steppers():
+        '''
+        enables stepper motors by setting enable pin to low
+        '''
+        GPIO.output(self.pins['step_enable'], GPIO.LOW)
+
+
+    def disable_steppers():
+        '''
+        disables stepper motors by setting enable pin to high
+        '''
+        GPIO.output(self.pins['step_enable'], GPIO.HIGH)
 
 
     def home(self, direction='x', speed = 2):
         '''
         homes axis in direction at given speed
-
+        
         :param direction; homing direction, x or y
         :param speed; homing speed in mm/s
         '''
         if direction == 'x':
+            self.write_params(300, speed, core=1)
             GPIO.output(self.pins['x_dir'], GPIO.LOW)
-            self.pruss.core0.load(join(self.bin_folder,
+            self.pruss.core1.load(join(self.bin_folder,
                 'home_x.bin'))
-        else:
+            self.pruss.core1.run()
+            while not self.pruss.core1.halted:
+                pass
+            if self.pruss.core1.r10:
+                raise Exception("Homing x failed")
+        elif direction == 'y':
+            self.write_params(300, speed, core=0)
             GPIO.output(self.pins['y_dir'], GPIO.LOW)
             self.pruss.core0.load(join(self.bin_folder,
                 'home_y.bin'))
-        
-        self.write_params(300, speed)
-        self.runcore0(direction)
-        
-        if self.pruss.core0.r2:
-            raise Exception('Homing failed')
-        else: 
+            self.pruss.core0.run()
+            while not self.pruss.core0.halted:
+                pass
+            if self.pruss.core0.r2:
+                raise Exception("Homing y failed")
+        else:
+            raise Exception("Direction invalid")
         # update current position, move so homing switch is disabled
-            if direction == 'x':
-                self.position[0] = 0
-                self.move([40, self.position[1]], 4)
-                self.position[0] = 0
-            else:
-                self.position[1] = 0
-                self.move([self.position[0], 10], 4)
-                self.position[1] = 0
+        if direction == 'x':
+            self.position[0] = 0
+            self.move([40, self.position[1]], 4)
+            self.position[0] = 0
+        else:
+            self.position[1] = 0
+            self.move([self.position[0], 10], 4)
+            self.position[1] = 0
 
 
     def move(self, target_position, speed = 2):
@@ -247,24 +258,25 @@ class Machine:
             raise Exception('Target out of bounds')
         elif target_position[1] < 0 or target_position[1] > 200:
             raise Exception('Target out of bounds')
-
-
         displacement = np.array(target_position) - np.array(self.position)
+        
         if displacement[0]:
             direction = GPIO.HIGH if displacement[0] > 0 else GPIO.LOW
             GPIO.output(self.pins['x_dir'], direction)
-            self.write_params(abs(displacement[0]), speed)
-            self.pruss.core0.load(join(self.bin_folder, 'move_x.bin'))
-            self.runcore0('x')
-
+            self.write_params(abs(displacement[0]), speed, core=1)
+            self.pruss.core1.load(join(self.bin_folder, 'move_x.bin'))
+            self.pruss.core1.run()
+            while not self.pruss.core1.halted:
+                pass
 
         if displacement[1]:
             direction = GPIO.HIGH if displacement[1] > 0 else GPIO.LOW
             GPIO.output(self.pins['y_dir'], direction)
-            self.write_params(abs(displacement[1]), speed)
+            self.write_params(abs(displacement[1]), speed, core=0)
             self.pruss.core0.load(join(self.bin_folder, 'move_y.bin'))
-            self.runcore0('y')
-
+            self.pruss.core0.run()
+            while not self.pruss.core0.halted:
+                pass
 
         self.position = target_position
 
@@ -273,6 +285,7 @@ class Machine:
         '''
         enables scanhead, ensure scanhead is not above substrate
         '''
+        GPIO.output(self.pins['prism_enable'], GPIO.LOW)
         PRU0_ARM_INTERRUPT = 19
         self.pruss.intc.ev_ch[PRU0_ARM_INTERRUPT] = self.IRQ
         self.pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
@@ -297,7 +310,12 @@ class Machine:
         QUEUE_LEN = 8
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         self.pruss.intc.out_enable_one(self.IRQ) 
-        self.irq.irq_recv()
+        while True:
+            result = self.irq.irq_recv()
+            if result:
+                break
+            else:
+                sleep(1E-3)
         self.pruss.intc.ev_clear_one(self.pruss.intc.out_event[self.IRQ])
         self.pruss.intc.out_enable_one(self.IRQ)
         if not byte: 
@@ -331,17 +349,18 @@ class Machine:
             return command_index
 
 
-    def disable_scanhead(self, byte=1):
+    def disable_scanhead(self, byte=5):
         '''
         disables scanhead
 
         function sleeps to offset is START_RINGBUFFER
         '''
+    
         data = [self.COMMANDS.inv['CMD_EXIT']]
         self.pruss.core0.dram.write(data, offset = byte)
         while not self.pruss.core0.halted:
             pass
-
+        GPIO.output(self.pins['prism_enable'], GPIO.HIGH)
 
     def error_received(self):
         '''
@@ -396,7 +415,7 @@ class Machine:
         SCANLINE_DATA_SIZE = self.bytesinline
         SCANLINE_HEADER_SIZE = 1
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
-        byte = START_RINGBUFFER = 1
+        byte = START_RINGBUFFER = 5
         # prep scanner by writing 8 empty lines to buffer
         write_data = [self.ERRORS.inv['ERROR_NONE']]
         empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]+[0]*self.bytesinline

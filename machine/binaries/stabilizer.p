@@ -1,11 +1,8 @@
 ;; -*- asm -*-
-;; LDgraphy was created by;
 ;;
 ;; (c) 2017 Henner Zeller <h.zeller@acm.org>
 ;;
-;; This file is part of a fork of LDGraphy, https://github.com/hstarmans/ldgraphy
-;; 
-;; (c) 2018 Henri Starmans <info@hexastorm.com>
+;; This file is part of LDGraphy. http://github.com/hzeller/ldgraphy
 ;;
 ;; LDGraphy is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -28,6 +25,8 @@
 
 #define PRU0_ARM_INTERRUPT 19
 #define CONST_PRUDRAM	   C24
+
+
 #define PRUSS_PRU_CTL      0x22000
 #define CYCLE_COUNTER_OFFSET  0x0C
 
@@ -54,12 +53,13 @@
 
 	.u32 item_start	        ; Start position of current item in ringbuffer
 	.u32 item_pos		; position within item.
+	.u32 sync_fails         ; number of lines failed to sync
 
 	.u16 state		; Current state machine state.
 	.u8  bit_loop		; bit loop
 	.u8  last_hsync_bit	; so that we can trigger on an edge
 .ends
-.assign Variables, r10, r21, v
+.assign Variables, r10, r22, v
 
 ;; Registers
 ;; r1 ... r9 : common use
@@ -79,12 +79,12 @@
 // Reading from r31
 .macro branch_if_hsync
 .mparam to_label
-        QBBC bit_is_clear, r31, 16 	   ; direct PRU input
+	QBBS bit_is_set, r31, 16 	       ; direct PRU input
 	QBEQ no_hsync, v.last_hsync_bit, 1 ; we are only interested in 0->1 edge
 	MOV v.last_hsync_bit, 1
 	MOV v.hsync_time, v.global_time 
-        JMP to_label
-bit_is_clear:
+	JMP to_label
+bit_is_set:
 	MOV v.last_hsync_bit, 0
 no_hsync:
 .endm
@@ -139,29 +139,34 @@ INIT:
 
 	;; switch the laser full on at this period so that we reliably hit the
 	;; hsync sensor.
-	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW-1
+	MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW - 1
 
 	;; Set GPIO bits to writable. Output bits need to be set to 0.
 
-	MOV v.item_start, START_RINGBUFFER    ; command byte position in DRAM
-	MOV v.state, STATE_RESTART
+	MOV v.item_start, START_RINGBUFFER         ; command byte position in DRAM
+	MOV v.state, STATE_IDLE
+	MOV v.sync_fails, 0
 
 	start_cpu_cycle_counter
 
 MAIN_LOOP:
-        LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
-	QBEQ FINISH, r1.b0, CMD_EXIT		   ; react to exit immediately
-        JMP v.state		; switch/case with direct jump :)
+	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
+	QBEQ FINISH, r1.b0, CMD_EXIT		       ; react to exit immediately
+	JMP v.state								   ; switch/case with direct jump :)
 
 
 	;; Each of these states must not use more than TICK_DELAY steps
+
 	;; Waiting for Data to arrive
-STATE_RESTART:
-        MOV v.global_time, 0	; have monotone increasing time for 1h or so
+STATE_IDLE:
+	QBEQ FINISH, r1.b0, CMD_EXIT
+	QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
+	MOV v.global_time, 0	                    ; have monotone increasing time for 1h or so
 	MOV v.wait_countdown, SPINUP_TICKS
-        MOV v.last_hsync_time, 0
+	MOV v.last_hsync_time, 0
 	MOV v.polygon_time, 0
 	MOV v.state, STATE_SPINUP
+	MOV v.sync_laser_on_time, 0
 
 	;; prepare data
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
@@ -176,8 +181,8 @@ STATE_SPINUP:
 	QBEQ spinup_done, v.wait_countdown, 0
 	JMP MAIN_LOOP_NEXT
 spinup_done:
-	SET r30.t7	; laser pwm1 on
-        SET r30.t5      ; laser pwm2 on 
+	SET r30.t7	                                ; laser pwm1 on
+	SET r30.t5                                  ; laser pwm2 on 
 	MOV v.wait_countdown, MAX_WAIT_STABLE_TICKS
 	MOV v.state, STATE_WAIT_STABLE
 	JMP MAIN_LOOP_NEXT
@@ -190,16 +195,19 @@ STATE_WAIT_STABLE:
 	;; with the laser not properly rotating or no feedback.
 	SUB v.wait_countdown, v.wait_countdown, 1
 	QBEQ REPORT_ERROR_MIRROR, v.wait_countdown, 0
-
+	QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
+	SET r30.t6     ; laser pwm1 on
+	SET r30.t5     ; laser pwm2 on
 	branch_if_hsync wait_stable_hsync_seen
 	JMP MAIN_LOOP_NEXT	; todo: account for cpu-cycles
 wait_stable_hsync_seen:
 	SUB r1, v.hsync_time, v.last_hsync_time
-	MOV v.last_hsync_time, v.hsync_time
-	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_ALLOW, TICKS_PER_MIRROR_SEGMENT+JITTER_ALLOW
+	MOV v.last_hsync_time, v.hsync_time 
 	CLR r30.t7     ; laser pwm1 off
-        CLR r30.t5     ; laser pwm2 off
+	CLR r30.t5     ; laser pwm2 off
+	/* zeller used something different but this didn't work with all motors */
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
+	branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_THRESH, TICKS_PER_MIRROR_SEGMENT+JITTER_THRESH
 	MOV v.state, STATE_CONFIRM_STABLE
 	JMP MAIN_LOOP_NEXT
 
@@ -212,54 +220,60 @@ wait_stable_not_synced_yet:
 STATE_CONFIRM_STABLE:
 	QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
 	SET r30.t7    ; laser pwm1 on
-        SET r30.t5    ; laser pwm2 on
+	SET r30.t5    ; laser pwm2 on
 confirm_stable_test_for_hsync:
 	branch_if_hsync confirm_stable_hsync_seen
 	JMP MAIN_LOOP_NEXT
 confirm_stable_hsync_seen:
 	CLR r30.t7 ; hsync finished, laser pwm1 off
-        CLR r30.t5 ; laser pwm2 off
+	CLR r30.t5 ; laser pwm2 off
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
-	/* todo: test if in between expected range, otherwise state wait stable */
-	MOV v.state, STATE_DATA_RUN
-	JMP MAIN_LOOP_NEXT
+	/* todo: test if in between expected range, otherwise state wait stable 
+	         zeller went straight to data run but I want it to pass the facet filter */
+	JMP active_data_wait
 
 	;; Sync step between data lines.
 STATE_DATA_WAIT_FOR_SYNC:
 	QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time ; not yet
 	;; Now we are close enough to the hsync-block, switch on the laser.
 	SET r30.t7     ; laser pwm1 on
-        SET r30.t5     ; laser pwm2 on
+	SET r30.t5     ; laser pwm2 on
 wait_for_sync:
 	branch_if_hsync wait_for_sync_hsync_seen
 	JMP MAIN_LOOP_NEXT
 wait_for_sync_hsync_seen:
 	CLR r30.t7 ; hsync finished, laser pwm1 off
-        CLR r30.t5 ; laser pwm2 off
+	CLR r30.t5 ; laser pwm2 off
+	/* calculate hsync_time to enable binning TODO: code clone! */
+	SUB r4, v.hsync_time, v.last_hsync_time  
+	MOV v.last_hsync_time, v.hsync_time
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
+	/* TODO: this only works for MVP demonstrator model 1
+	         if it is the the outlier continue else go back to STATE_DATA_WAIT_FOR_SYNC */
+	; for testing
+	;JMP active_data_wait
+	;MOV r5, 25015
+	;QBLT active_data_wait, r5, r4
 
 	;; we step at the end of a data line, so here we should reset.
-	CLR r30.t14 ; y-step
+	CLR r30.t14  ; y-step
 
 	MOV v.state, STATE_WAIT_FOR_DATA_RUN
-        MOV v.wait_countdown, 0
+	MOV v.wait_countdown, 0
 	JMP MAIN_LOOP_NEXT
 
 STATE_WAIT_FOR_DATA_RUN:
-        ADD v.wait_countdown, v.wait_countdown, 1
-        MOV r1, TICKS_START
-        QBLT MAIN_LOOP_NEXT, r1, v.wait_countdown
-        MOV v.state, STATE_DATA_RUN
-        JMP MAIN_LOOP_NEXT
+	ADD v.wait_countdown, v.wait_countdown, 1
+	MOV r1, TICKS_START
+	QBLT MAIN_LOOP_NEXT, r1, v.wait_countdown
+	MOV v.state, STATE_DATA_RUN
+	JMP MAIN_LOOP_NEXT
 
 	;; Loop to send all the data. We go through each byte, and within that
 	;; through each bit, once per state.
 STATE_DATA_RUN:
-	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
-	QBEQ end_data_run, r1.b0, CMD_EMPTY
-        MOV r1, v.item_size
+	MOV r1, v.item_size
 	QBLT data_run_data_output, r1, v.item_pos
-end_data_run:
 	MOV v.state, STATE_ADVANCE_RINGBUFFER
 	JMP MAIN_LOOP_NEXT
 data_run_data_output:
@@ -271,11 +285,11 @@ data_run_data_output:
 
 	QBBS data_laser_set_on, r1.b0, v.bit_loop
 	CLR r30.t7 ; laser pwm1 off
-        CLR r30.t5 ; laser pwm2 off
+	CLR r30.t5 ; laser pwm2 off
 	JMP data_laser_set_done
 data_laser_set_on:
 	SET r30.t7 ; laser pwm1 on
-        SET r30.t5 ; laser pwm2 on
+	SET r30.t5 ; laser pwm2 on
 data_laser_set_done:
 
 	QBEQ data_run_next_byte, v.bit_loop, 0
@@ -289,34 +303,46 @@ data_run_next_byte:
 	;;  not really necessary to be its own state.
 STATE_ADVANCE_RINGBUFFER:
 	CLR r30.t7 ; laser pwm1 off
-        CLR r30.t5 ; laser pwm2 off
+	CLR r30.t5 ; laser pwm2 off
 
 	;; check if we need to advance stepper
 	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
-	QBNE advance_sled_done, r1.b0, CMD_SCAN_DATA
-	SET r30.t14   ; y-step
+	QBEQ advance_sled_done, r1.b0, CMD_SCAN_DATA_NO_SLED
+	SET r30.t14  ; y-step
 advance_sled_done:
-        QBEQ signal_host_done, r1.b0, CMD_EMPTY
 	;; signal host that we are done with this item.
 	MOV r1.b0, CMD_EMPTY
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
 	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; tell that status changed.
-signal_host_done:
+
 	ADD v.item_start, v.item_start, v.item_size ; advance in ringbuffer
 	QBLT rb_advanced, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
 	MOV v.item_start, START_RINGBUFFER	; Wrap around
 rb_advanced:
-	MOV v.state, STATE_READ_COMMAND
+	MOV v.wait_countdown, END_OF_DATA_WAIT_TICKS
+	MOV v.state, STATE_AWAIT_MORE_DATA
 	JMP MAIN_LOOP_NEXT
 
-;; TODO: END_OF_DATA_WAIT_TICKS should be dependent on polygoon speed
-;; waits a bit for more data or moves to next element
-;; the idea of a datawait is crazy; you have already waited 7 periods by this time.
-STATE_READ_COMMAND:
+STATE_AWAIT_MORE_DATA:
+	SUB v.wait_countdown, v.wait_countdown, 1
+	QBNE active_data_wait, v.wait_countdown, 0
+	;; ok, we waited too long, let us switch off motors and go back
+	;; to idle.
+	MOV r1, 1000000 ; random just some upper limit to prevent overflow
+	QBLT ringbufferreset, r1, v.sync_fails 
+	ADD v.sync_fails, v.sync_fails, 1
+ringbufferreset:
+	MOV v.state, STATE_IDLE
+	JMP MAIN_LOOP_NEXT
+
+active_data_wait:
 	LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
 	QBEQ FINISH, r1.b0, CMD_EXIT
+	QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
+
 	MOV v.item_pos, SCANLINE_HEADER_SIZE 		; Start after header
 	MOV v.bit_loop, 7
+
 	MOV v.state, STATE_DATA_WAIT_FOR_SYNC
 	JMP MAIN_LOOP_NEXT
 
@@ -343,11 +369,12 @@ mirror_toggle_done:
 
 FINISH:
 	CLR r30.t7 ; laser pwm1 off
-        CLR r30.t5 ; laser pwm0 off
-        MOV r1, 0		; Switch off all GPIO bits.
+	CLR r30.t5 ; laser pwm0 off
+	MOV r1, 0		; Switch off all GPIO bits.
 	;; Tell host that we have seen the CMD_EXIT and acknowledge with CMD_DONE
 	MOV r1.b0, CMD_DONE
 	SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
+	SBCO v.sync_fails, CONST_PRUDRAM, SYNC_FAIL_POS, 4
 	HALT
 
 REPORT_ERROR_MIRROR:
@@ -364,4 +391,6 @@ REPORT_DEBUG_BREAK:
 
 ERROR_SET_VALUE:
 	SBCO r1.b0, CONST_PRUDRAM, ERROR_RESULT_POS, 1
+	;; signal host that we are done, code waits for this 
+	MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; tell that status changed.
 	JMP FINISH

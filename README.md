@@ -32,6 +32,11 @@ To Do
 * check the speed of polygon in hertz 
 * add a homing procedure for the z-axis
 * add gpio script for z-axis move
+* add z axis to machine
+* move camera class to different file
+* use getter and setters in machine class
+* wrap C++ library for motors
+* add an initialization procedure for machine
 
 
 Image used
@@ -79,6 +84,12 @@ Install Adafruit_BBIO, Adafruit_GPIO and bidict.
 ```
 pip3 install Adafruit_BBIO Adafruit_GPIO bidict
 ```
+Install zmq for interaction with a remote camera
+```
+sudo apt install python3-zmq
+```
+
+
 
 Install pasm
 ------------

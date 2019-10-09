@@ -38,7 +38,7 @@ DELAYON:
     SUB r0, r0, 1
     QBNE DELAYON, r0, 0
 
-    CLR r30.t14   ; Y-STEP pulse
+    CLR r30.t14 ; Y-STEP pulse
     MOV r0, params.halfperiodstep
 DELAYOFF:
     SUB r0, r0, 1

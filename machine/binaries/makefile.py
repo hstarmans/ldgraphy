@@ -15,8 +15,9 @@ def parse_args():
 
 
 def make():
-    for file in glob.glob("*.p"):
-        os.system(COMPILER + ' -b ' + file)
+    for filename in glob.glob("*.p"):
+        print(filename)
+        os.system(COMPILER + ' -b ' + filename)
 
 
 def clean():
