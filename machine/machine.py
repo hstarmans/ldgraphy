@@ -20,6 +20,7 @@ import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_GPIO.I2C as I2C
 import numpy as np
 from bidict import bidict
+import steppers
 
 
 class Machine:
@@ -30,10 +31,9 @@ class Machine:
         self.position = [0, 0, 0]
         self.steps_per_mm = 76.2
         self.bytesinline = 790 
-        
+        self.motor_spi = [self.init_stepper(stepper_label) for label in ['x','y','z']] 
         self.currentdir = dirname(realpath(__file__))
         self.bin_folder = join(self.currentdir, 'binaries')
-        
         self.pindictionary()
         self.init_pru()
         self.laserchannels = 0
@@ -136,6 +136,28 @@ class Machine:
                 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC']
         self.ERRORS += ['ERROR_TIME_OVERRUN']
         self.ERRORS = bidict(enumerate(self.ERRORS))
+
+
+    def init_stepper(self, drive='x', mA=600, microsteps=16, stealthchop=True)
+         '''
+        connects to stepper motor with current in miliamperes, number of microsteps
+        and steatlchop, drive can be x, y or z.
+        '''
+        GPIO_1_BASE = 0x44E07000
+        # pins order is x,y,z
+        pindict = ['x':GPIO_0_BASE | 5,'y':GPIO_0_BASE | 13, 'z': GPIO_0_BASE | 26] 
+        try:
+            motor = steppers.TMC2130(pindict[drive])
+        except KeyError:
+            raise Exception("Invalid drive value")
+        motor.begin()
+        if motor.test_connection():
+            raise Exception("Failed to connent to {} motor".format(motor_label))
+        motor.rms_current(mA)
+        motor.microsteps(microsteps)
+        motor.toff(3)
+        motor.stealthChop(stealthChop)
+        return motor
 
 
     def init_pru(self):

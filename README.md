@@ -24,7 +24,6 @@ The machine.py file in the machine folder allows you to play around with the mac
 * check the speed of polygon in hertz 
 * check steps per mm for the z-axis, check z-limits, and z-homing offset
 * test code added; machine and test scripts
-* add c++ library motors to machine
 * add possibility for single facet exposure
 
 
