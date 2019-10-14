@@ -1,6 +1,9 @@
 '''
-Class which can be used to be interact with Hexastorm
+Class which can be used to be to send data to the laser head and move it
 
+It is also possible to take pictures with a remote camera.
+
+@license: GPLv3
 @company: Hexastorm
 @author: Rik Starmans
 '''
@@ -9,6 +12,7 @@ from time import sleep
 from ctypes import c_uint32, Structure
 from os.path import join, dirname, realpath
 import pickle
+import subprocess
 
 from uio.ti.icss import Icss
 from uio.device import Uio
@@ -16,104 +20,94 @@ import Adafruit_BBIO.GPIO as GPIO
 import Adafruit_GPIO.I2C as I2C
 import numpy as np
 from bidict import bidict
-import zmq
-
-
-class Camera:
-    '''
-    class to interact with remote camera via ZMQ
-    '''
-    def __init__(self, camera = False):
-        self.connect()
-        if not self.is_connected():
-            raise Exception('Can not connect to camera')
-
-
-    def connect(self, port = '5556'):
-        '''
-        connect with remote camera
-        '''
-        context = zmq.Context()
-        self.socket = context.socket(zmq.PAIR)
-        self.socket.bind('tcp://*:%s' % port)
-
-
-    def set_exposure(self, ms):
-        '''
-        sets exposure in ms
-        '''
-        self.socket.send_string('set_exposure({})'.format(ms))
-        return self.socket.recv_pyobj()
-
-
-    def is_connected(self):
-        '''
-        checks connection
-        '''
-        self.socket.send_string('is_connected()')
-        return self.socket.recv_pyobj()
-
-
-    def get_spotinfo(self, wait=True):
-        '''
-        return spotsize and position in dictionary
-        '''
-        self.socket.send_string('get_spotinfo()')
-        if wait:
-            return self.socket.recv_pyobj()
-    
-    def get_answer(self):
-        return self.socket.recv_pyobj()
 
 
 class Machine:
     def __init__(self, camera = False):
-        self.position = [0, 0]
-        self.steps_per_mm = 76.2
-        self.bytesinline = 790 
-        
-        currentdir = dirname(realpath(__file__))
-        self.bin_folder = join(currentdir, 'binaries')
-        
-        self.setuppins()
-        self.setuppru()
-        self.loadconstants()
         if camera:
             self.camera = Camera()
 
+        self.position = [0, 0, 0]
+        self.steps_per_mm = 76.2
+        self.bytesinline = 790 
+        
+        self.currentdir = dirname(realpath(__file__))
+        self.bin_folder = join(self.currentdir, 'binaries')
+        
+        self.pindictionary()
+        self.init_pru()
+        self.laserchannels = 0
+        self.configure_pins()
+        self.loadconstants()
+        
+        # digipot is used to set laser power
         self.digipot = I2C.get_i2c_device(0x28)
 
 
-    #TODO: do via getter / setter?
-    def set_laser_power(self, value):
+    def configure_pins():
         '''
-        set laser power to given value
+        pins are configured via config-pin -f pinfile.bbio
+
+        This relies on cape-universal. Cape-universal allows pins to changed on the fly
+        without reboot.
+        '''
+        path = join(self.currentdir, 'config-pin', 'firestarter.bbio')
+        MyOut = subprocess.Popen(['config-pin', '-f', ]),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+        stdout, stderr = MyOut.communicate()
+        if stdout or stderr:
+            raise Exception("Configuring pins via config-pin failed")
+
+
+    @laser_power.setter
+    def laser_power(self, value):
+        '''
+        set laser power to given value in range [0-255]
+        for the laser driver chip. This does not turn on or off the laser.
 
         The laser power can be changed in two ways.
-        First by using one or two channels. Second by setting the DAC value.
+        First by using one or two channels. Second by settings a value between 0-255
+        at the laser driver chip.
         '''
         if value < 0 or value > 255:
             raise Exception('Invalid laser power')
         self.digipot.write8(0, value)
-    
 
-    def get_laser_power(self):
+
+    @property
+    def laser_power(self):
         '''
-        get current laser power
+        gets power set for laser driver chip can be in range [0-255] 
         '''
         return abs(self.digipot.readU8(0))
 
 
-    def switch_laser(self, value):
+    @property
+    def laserchannels(self):
         '''
-        switches laser 0%, 50% or 100% on.
+        returns the number of laser channels turned on
+
+        channels can be [0,1,2]
+        '''
+        return self._laserchannels
+
+
+    @laserchannels.setter
+    def laserchannels(self, channels):
+        '''
+        sets 0, 1 or 2 channels on.
         
         The laser power can be changed in two ways.
-        First by using one or two channels. Second by setting the DAC value.
-        Here the amount of channels used is set. Changing the amount of channels is not supported
-        in the exposer.
-        :param value: {0:0, 1:50, 2:100} 
+        First by using one or two channels. Second by setting a value in range [0-255] at 
+        the laser driver chip. Here the amount of channels used is set.
+        :param channels: number of channels to be turned max is 2. 
         '''
+        channels = int(round(channels))
+        if channels<0 or channels>2:
+            raise Exception("Channels is not within set [0,1,2]")
+        self._laserchannelsactive = channels
+
         self.pruss.core0.load(join(self.bin_folder,
             'switch_laser.bin'))
 
@@ -122,10 +116,12 @@ class Machine:
                     ("power", c_uint32)
         ]
         params0 = self.pruss.core0.dram.map(Params)
-        params0.power = int(round(value))
+        params0.power = int(round(channels))
         self.pruss.core0.run()
         while not self.pruss.core0.halted:
             pass
+        
+        self._laserchannelsactive = channels
 
 
     def loadconstants(self):
@@ -142,7 +138,7 @@ class Machine:
         self.ERRORS = bidict(enumerate(self.ERRORS))
 
 
-    def setuppru(self):
+    def init_pru(self):
         '''
         creates interface for pruss and irq
         '''
@@ -152,9 +148,9 @@ class Machine:
         self.pruss.initialize()
 
 
-    def setuppins(self):
+    def pindictionary(self):
         '''
-        creates dictionary for motor pins and disables motors
+        creates dictionary for motor pins
         '''
         self.pins = {'x_dir': "P9_42",
                      'y_dir': "P8_15",
@@ -234,29 +230,45 @@ class Machine:
                 pass
             if self.pruss.core0.r2:
                 raise Exception("Homing y failed")
+        elif direction == 'z':
+            self.write_params(300, speed, core=1)
+            GPIO.output(self.pins['z_dir'], GPIO.LOW)
+            self.pruss.core1.load(join(self.bin_folder,
+                'home_z.bin'))
+            self.pruss.core1.run()
+            while not self.pruss.core1.halted:
+                pass
+            if self.pruss.core1.r10:
+                raise Exception("Homing z failed")
         else:
             raise Exception("Direction invalid")
         # update current position, move so homing switch is disabled
         if direction == 'x':
             self.position[0] = 0
-            self.move([40, self.position[1]], 4)
+            self.move([40, self.position[1], self.position[2]], 4)
             self.position[0] = 0
-        else:
+        elif direction == 'y':
             self.position[1] = 0
-            self.move([self.position[0], 10], 4)
+            self.move([self.position[0], 10, self.position[2]], 4)
             self.position[1] = 0
+        else: # must be z exception already cared in homing procedure
+            self.position[2] = 0
+            self.move([self.position[0], self.postion[2], 10], 4)  
+            self.position[2] = 0
 
 
     def move(self, target_position, speed = 2):
         '''
         moves axis into position at given speed
 
-        :param target position; list, [x, y] in mm
+        :param target position; list, [x, y, z] in mm
         :param speed; homing speed in mm/s
         '''
         if target_position[0] < 0 or target_position[0] > 200:
             raise Exception('Target out of bounds')
         elif target_position[1] < 0 or target_position[1] > 200:
+            raise Exception('Target out of bounds')
+        elif target_position[2] < 0 or target_position[2] > 200:
             raise Exception('Target out of bounds')
         displacement = np.array(target_position) - np.array(self.position)
         
@@ -276,6 +288,15 @@ class Machine:
             self.pruss.core0.load(join(self.bin_folder, 'move_y.bin'))
             self.pruss.core0.run()
             while not self.pruss.core0.halted:
+                pass
+
+        if displacement[2]:
+            direction = GPIO.HIGH if displacement[2] > 0 else GPIO.LOW
+            GPIO.output(self.pins['z_dir'], direction)
+            self.write_params(abs(displacement[2]), speed, core=1)
+            self.pruss.core1.load(join(self.bin_folder, 'move_z.bin'))
+            self.pruss.core1.run()
+            while not self.pruss.core1.halted:
                 pass
 
         self.position = target_position

@@ -1,15 +1,14 @@
 .origin 0
 .entrypoint START
 
-#define GPIO_3_ADDR       0x481AE000
 #define GPIO_1_ADDR       0x4804c000
 #define GPIO_DATAOUT      0x13c
 #define GPIO_DATAIN       0x138
 #define GPIO_SETDATAOUT   0x194
 #define GPIO_CLEARDATAOUT 0x190
 #define GPIO_OE           0x134
-#define XPO               16
-#define XSTEP             20
+#define ZPO               19
+#define ZSTEP             14
 
 .struct Params
 	.u32	steps
@@ -29,7 +28,7 @@ START:
     MOV r3, GPIO_3_ADDR | GPIO_OE
     ; set direction to output
     LBBO r2, r3, 0, 4
-    CLR r2, r2, XSTEP
+    CLR r2, r2, ZSTEP
     SBBO r2, r3, 0, 4
 
     ; load parameters

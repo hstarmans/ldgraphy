@@ -30,13 +30,10 @@ To Do
   pin".
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz 
-* add a homing procedure for the z-axis
-* add gpio script for z-axis move
-* add z axis to machine
-* move camera class to different file
-* use getter and setters in machine class
+* check steps per mm for the z-axis, check z-limits, and z-homing offset
+* test code added; machine and test scripts
 * wrap C++ library for motors
-* add an initialization procedure for machine
+* add possibility for single facet exposure
 
 
 Image used
@@ -88,7 +85,6 @@ Install zmq for interaction with a remote camera
 ```
 sudo apt install python3-zmq
 ```
-
 
 
 Install pasm
