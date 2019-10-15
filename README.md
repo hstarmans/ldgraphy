@@ -1,7 +1,7 @@
 # Hexastorm - Laser Direct Lithography
 
 
-http://www.hexastorm.com/
+https://www.hexastorm.com/
 
 A process known as Laser Direct Imaging. <br>
 
@@ -64,13 +64,13 @@ If this doesn't change, your old bootloader in the eMMC might be blocking u-boot
 ```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
+Install wheel, Adafruit_BBIO, Adafruit_GPIO and bidict.
+```
+pip3 install Adafruit_BBIO Adafruit_GPIO bidict
+```
 Clone [py-uio](https://github.com/mvduin/py-uio) and copy `uio-pruss.rules` file to `/etc/udev/rules.d/` and reboot.
 ```
 pip3 install --src . -e 'git+https://github.com/mvduin/py-uio.git#egg=py-uio'
-```
-Install Adafruit_BBIO, Adafruit_GPIO and bidict.
-```
-pip3 install Adafruit_BBIO Adafruit_GPIO bidict
 ```
 Install the python library for the stepper motors, see [TMC2130Stepper](https://github.com/hstarmans/TMC2130Stepper). <br>
 Optionally, install zmq for interaction with a remote camera
