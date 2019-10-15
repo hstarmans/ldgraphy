@@ -123,6 +123,61 @@ class Machine:
         self._laserchannels = int(round(channels))
 
 
+    def test_photodiode(self):
+        """
+        The laser is turned on. The polygon is spun at a rate of 1000 Hz
+        for 5 seconds. The photodiode is measured for three seconds, if 
+        high within these three seconds test is succesfull, otherwise 
+        unsuccesfull. The laser is turned off.
+        """
+        GPIO.output(self.pins['prism_enable'], GPIO.LOW)
+        self.pruss.core0.load(join(self.bin_folder,
+                        'photodiodetest.bin'))
+        self.pruss.core0.run()
+        print("Waiting for core to halt")
+        while not self.pruss.core0.halted:
+            pass
+        byte0 = self.pruss.core0.dram.map(c_uint32)
+        return_value = int(byte0.value)
+        if return_value == 0:
+            print("Laser detected with photodiode, test successfull")
+        elif return_value == 1:
+            print("Photo diode connected but no signal")
+        else:
+            print("Photo diode not connected")
+        GPIO.output(self.pins['prism_enable'], GPIO.HIGH)
+
+
+    def test_polygonmotor(self):
+        """
+        spins the polygon at a rate of x Hz for 5 seconds
+        """
+        GPIO.output(self.pins['prism_enable'], GPIO.LOW)
+        self.pruss.core0.load(join(self.bin_folder,
+                        'spinpolygon.bin'))
+        self.pruss.core0.run()
+        print("Spinning polygon for 5 seconds")
+        while not self.pruss.core0.halted:
+            pass
+        GPIO.output(self.pins['prism_enable'], GPIO.HIGH)
+
+
+    def test_createline(self):
+        """
+        spins the polygon at a rate of x Hz for 5 seconds
+        while laser channel 1 is enabled.
+        As such a line is created without a phase lock loop.
+        """
+        GPIO.output(self.pins['prism_enable'], GPIO.LOW)
+        self.pruss.core0.load(join(self.bin_folder,
+                        'createline.bin'))
+        self.pruss.core0.run()
+        print("Turning on channel 1 and spinning polygon for 5 seconds")
+        while not self.pruss.core0.halted:
+            pass
+        GPIO.output(self.pins['prism_enable'], GPIO.HIGH)
+
+
     def loadconstants(self):
         '''
         loads COMMANDS and Errors
@@ -410,6 +465,7 @@ class Machine:
         while not self.pruss.core0.halted:
             pass
         GPIO.output(self.pins['prism_enable'], GPIO.HIGH)
+
 
     def error_received(self):
         '''

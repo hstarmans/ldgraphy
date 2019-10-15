@@ -21,7 +21,6 @@ The machine.py file in the machine folder allows you to play around with the mac
 ## To Do
 * One program is executed on the CPU side which checks for events and sends lines to the PRU. This program has influence on the execution of the PRU. This can be deduced from the noise produced by the mirror motor. A time-out has been set which partly mitigates this problem. Still it exists!!
 * use asyncio loop for stabilizer
-* add photodiode test and spin polygon test to machine
 * if you enable the scan head, you now wait 5 seconds for it to stabilize. Ideally, there would be some internal check.
 * check the speed of polygon in hertz 
 * check z-limits and z-homing offset

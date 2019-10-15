@@ -17,7 +17,7 @@ print('Waiting for core to halt')
 while not pruss.core0.halted:
     pass
 # disable motor
-GPIO.output("P9_23", GPIO.LOW)
+GPIO.output("P9_23", GPIO.HIGH)
 
 
 
