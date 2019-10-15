@@ -24,8 +24,7 @@ The machine.py file in the machine folder allows you to play around with the mac
 * add photodiode test and spin polygon test to machine
 * if you enable the scan head, you now wait 5 seconds for it to stabilize. Ideally, there would be some internal check.
 * check the speed of polygon in hertz 
-* check z-limits, and z-homing offset
-* test code added; machine and test scripts
+* check z-limits and z-homing offset
 * add possibility for single facet exposure
 * z home pin doesn't work
 

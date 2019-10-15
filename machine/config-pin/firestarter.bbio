@@ -41,7 +41,7 @@ P9_13 default
 P9_14 gpio
 P9_15 gpio
 P9_16 gpio
-P9_17 spi_cs
+P9_17 gpio
 P9_18 spi
 P9_21 spi
 P9_22 spi_sclk

@@ -21,43 +21,50 @@ import Adafruit_GPIO.I2C as I2C
 import numpy as np
 from bidict import bidict
 import steppers
+from camera import Camera
 
 
 class Machine:
     def __init__(self, camera = False):
         if camera:
             self.camera = Camera()
-
         self.position = [0, 0, 0]
-        self.steps_per_mm = 76.2
         self.bytesinline = 790 
-        self.motor_spi = [self.init_stepper(stepper_label) for label in ['x','y','z']] 
-        self.currentdir = dirname(realpath(__file__))
-        self.bin_folder = join(self.currentdir, 'binaries')
         self.pindictionary()
         self.init_pru()
+        self.currentdir = dirname(realpath(__file__))
+        self.bin_folder = join(self.currentdir, 'binaries')
         self.laserchannels = 0
         self.configure_pins()
         self.loadconstants()
+        self.motor_spi = [self.init_stepper(label) for label in ['x','y','z']] 
         
         # digipot is used to set laser power
-        self.digipot = I2C.get_i2c_device(0x28)
+        self.digipot = I2C.get_i2c_device(0x28, busnum=2)
 
 
-    def configure_pins():
+    def configure_pins(self):
         '''
         pins are configured via config-pin -f pinfile.bbio
 
-        This relies on cape-universal. Cape-universal allows pins to changed on the fly
-        without reboot.
+        This relies on cape-universal. Cape-universal allows pins to be
+        changed on the fly without reboot.
         '''
         path = join(self.currentdir, 'config-pin', 'firestarter.bbio')
-        MyOut = subprocess.Popen(['config-pin', '-f', ]),
+        MyOut = subprocess.Popen(['config-pin', '-f', path ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT)
         stdout, stderr = MyOut.communicate()
         if stdout or stderr:
             raise Exception("Configuring pins via config-pin failed")
+
+
+    @property
+    def laser_power(self):
+        '''
+        gets power set for laser driver chip can be in range [0-255] 
+        '''
+        return abs(self.digipot.readU8(0))
 
 
     @laser_power.setter
@@ -67,20 +74,12 @@ class Machine:
         for the laser driver chip. This does not turn on or off the laser.
 
         The laser power can be changed in two ways.
-        First by using one or two channels. Second by settings a value between 0-255
-        at the laser driver chip.
+        First by using one or two channels. Second by settings a value between
+        0-255 at the laser driver chip.
         '''
         if value < 0 or value > 255:
             raise Exception('Invalid laser power')
         self.digipot.write8(0, value)
-
-
-    @property
-    def laser_power(self):
-        '''
-        gets power set for laser driver chip can be in range [0-255] 
-        '''
-        return abs(self.digipot.readU8(0))
 
 
     @property
@@ -99,14 +98,14 @@ class Machine:
         sets 0, 1 or 2 channels on.
         
         The laser power can be changed in two ways.
-        First by using one or two channels. Second by setting a value in range [0-255] at 
-        the laser driver chip. Here the amount of channels used is set.
+        First by using one or two channels. Second by setting a value in 
+        range [0-255] at the laser driver chip. Here the amount of channels 
+        used is set.
         :param channels: number of channels to be turned max is 2. 
         '''
         channels = int(round(channels))
         if channels<0 or channels>2:
             raise Exception("Channels is not within set [0,1,2]")
-        self._laserchannelsactive = channels
 
         self.pruss.core0.load(join(self.bin_folder,
             'switch_laser.bin'))
@@ -121,7 +120,7 @@ class Machine:
         while not self.pruss.core0.halted:
             pass
         
-        self._laserchannelsactive = channels
+        self._laserchannels = int(round(channels))
 
 
     def loadconstants(self):
@@ -138,25 +137,25 @@ class Machine:
         self.ERRORS = bidict(enumerate(self.ERRORS))
 
 
-    def init_stepper(self, drive='x', mA=600, microsteps=16, stealthchop=True)
-         '''
+    def init_stepper(self, drive='x', mA=600, microsteps=16, stealthchop=True):
+        '''
         connects to stepper motor with current in miliamperes, number of microsteps
         and steatlchop, drive can be x, y or z.
         '''
-        GPIO_1_BASE = 0x44E07000
+        GPIO_0_BASE = 0x44E07000
         # pins order is x,y,z
-        pindict = ['x':GPIO_0_BASE | 5,'y':GPIO_0_BASE | 13, 'z': GPIO_0_BASE | 26] 
+        pindict = {'x':GPIO_0_BASE | 5,'y':GPIO_0_BASE | 30, 'z': GPIO_0_BASE | 26} 
         try:
             motor = steppers.TMC2130(pindict[drive])
         except KeyError:
             raise Exception("Invalid drive value")
         motor.begin()
         if motor.test_connection():
-            raise Exception("Failed to connent to {} motor".format(motor_label))
+            raise Exception("Failed to connent to {} motor".format(drive))
         motor.rms_current(mA)
         motor.microsteps(microsteps)
         motor.toff(3)
-        motor.stealthChop(stealthChop)
+        motor.stealthChop(stealthchop)
         return motor
 
 
@@ -184,31 +183,38 @@ class Machine:
             GPIO.setup(value, GPIO.OUT)
 
 
-    def write_params(self, distance, speed, core=0):
+    def write_params(self, axis, distance, speed, core=0):
         '''
         writes parameters to pru0
 
         in moving distance defines a length
         in homing distance defines a limit
+
+        :param axis; can be 'x', 'y' or 'z' used to determine steps per mm
         :param distance; distance in mm
         :param speed; speed in mm/s
         :param core; pru core map parameters to
         '''
+        try:
+            steps_per_mm = {'x': 76.2, 'y': 76.2, 'z': 1600}[axis]
+        except KeyError:
+            raise Exception("Axis {} invalid".format(axis))
+
         class Params( Structure ):
-            _fields_ = [
-                    ("steps", c_uint32),  # upper limit
-                    ("halfperiodstep", c_uint32) # speed
+            _fields_ = [                         #1 steps moved in case of move
+                    ("steps", c_uint32),         #1 max amount steps moved for home
+                    ("halfperiodstep", c_uint32) #2 speed
         ]
         if core == 0:
             params = self.pruss.core0.dram.map(Params)
         else:
             params = self.pruss.core1.dram.map(Params)
         # round(np.float64(3.0)) -> 3.0, round(3.0) -> 3
-        params.steps = int(round(distance * self.steps_per_mm))
+        params.steps = int(round(distance * steps_per_mm))
         CPU_SPEED = 200E6
         INST_PER_LOOP = 2
         params.halfperiodstep = int(round(CPU_SPEED
-            /(2*speed*self.steps_per_mm*INST_PER_LOOP)))
+            /(2*speed*steps_per_mm*INST_PER_LOOP)))
 
 
     def enable_steppers():
@@ -233,7 +239,7 @@ class Machine:
         :param speed; homing speed in mm/s
         '''
         if direction == 'x':
-            self.write_params(300, speed, core=1)
+            self.write_params('x', 300, speed, core=1)
             GPIO.output(self.pins['x_dir'], GPIO.LOW)
             self.pruss.core1.load(join(self.bin_folder,
                 'home_x.bin'))
@@ -243,7 +249,7 @@ class Machine:
             if self.pruss.core1.r10:
                 raise Exception("Homing x failed")
         elif direction == 'y':
-            self.write_params(300, speed, core=0)
+            self.write_params('y', 300, speed, core=0)
             GPIO.output(self.pins['y_dir'], GPIO.LOW)
             self.pruss.core0.load(join(self.bin_folder,
                 'home_y.bin'))
@@ -253,7 +259,7 @@ class Machine:
             if self.pruss.core0.r2:
                 raise Exception("Homing y failed")
         elif direction == 'z':
-            self.write_params(300, speed, core=1)
+            self.write_params('z', 300, speed, core=1)
             GPIO.output(self.pins['z_dir'], GPIO.LOW)
             self.pruss.core1.load(join(self.bin_folder,
                 'home_z.bin'))
@@ -275,7 +281,7 @@ class Machine:
             self.position[1] = 0
         else: # must be z exception already cared in homing procedure
             self.position[2] = 0
-            self.move([self.position[0], self.postion[2], 10], 4)  
+            self.move([self.position[0], self.position[2], 10], 4)  
             self.position[2] = 0
 
 
@@ -297,7 +303,7 @@ class Machine:
         if displacement[0]:
             direction = GPIO.HIGH if displacement[0] > 0 else GPIO.LOW
             GPIO.output(self.pins['x_dir'], direction)
-            self.write_params(abs(displacement[0]), speed, core=1)
+            self.write_params('x', abs(displacement[0]), speed, core=1)
             self.pruss.core1.load(join(self.bin_folder, 'move_x.bin'))
             self.pruss.core1.run()
             while not self.pruss.core1.halted:
@@ -306,7 +312,7 @@ class Machine:
         if displacement[1]:
             direction = GPIO.HIGH if displacement[1] > 0 else GPIO.LOW
             GPIO.output(self.pins['y_dir'], direction)
-            self.write_params(abs(displacement[1]), speed, core=0)
+            self.write_params('y', abs(displacement[1]), speed, core=0)
             self.pruss.core0.load(join(self.bin_folder, 'move_y.bin'))
             self.pruss.core0.run()
             while not self.pruss.core0.halted:
@@ -315,7 +321,7 @@ class Machine:
         if displacement[2]:
             direction = GPIO.HIGH if displacement[2] > 0 else GPIO.LOW
             GPIO.output(self.pins['z_dir'], direction)
-            self.write_params(abs(displacement[2]), speed, core=1)
+            self.write_params('z', abs(displacement[2]), speed, core=1)
             self.pruss.core1.load(join(self.bin_folder, 'move_z.bin'))
             self.pruss.core1.run()
             while not self.pruss.core1.halted:
@@ -461,7 +467,8 @@ class Machine:
         byte = START_RINGBUFFER = 5
         # prep scanner by writing 8 empty lines to buffer
         write_data = [self.ERRORS.inv['ERROR_NONE']]
-        empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]+[0]*self.bytesinline
+        empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
+        empty_line += [0]*self.bytesinline
         write_data += empty_line*QUEUE_LEN
         self.pruss.core0.dram.write(write_data)
         # receive current position
