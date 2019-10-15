@@ -27,6 +27,7 @@ The machine.py file in the machine folder allows you to play around with the mac
 * check z-limits, and z-homing offset
 * test code added; machine and test scripts
 * add possibility for single facet exposure
+* z home pin doesn't work
 
 
 ## Install notes
