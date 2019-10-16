@@ -385,9 +385,10 @@ class Machine:
         self.position = target_position
 
 
-    def enable_scanhead(self):
+    def enable_scanhead(self, singlefacet=False):
         '''
         enables scanhead, ensure scanhead is not above substrate
+        :param singlefacet; if true singlefacet exposure enabled
         '''
         GPIO.output(self.pins['prism_enable'], GPIO.LOW)
         PRU0_ARM_INTERRUPT = 19
@@ -397,6 +398,10 @@ class Machine:
         self.pruss.core0.load(join(self.bin_folder, './stabilizer.bin'))
         # flush memory, in new version of Py-UIO there is a function to do this
         self.pruss.core0.dram.write([0]*self.bytesinline*8+[0]*5)
+        if singlefacet:
+            self.pruss.core0.r1 = 1
+        else:
+            self.pruss.core0.r1 = 0
         self.pruss.core0.run()
         #TODO: add check polygon is enabled and stable
         # if you can't disable does not work

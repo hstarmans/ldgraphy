@@ -55,12 +55,12 @@
     .u32 item_pos        ; position within item.
     .u32 sync_fails         ; number of lines failed to sync
 
-    .u16 state        ; Current state machine state.
-    .u8  bit_loop        ; bit loop
-    .u8  last_hsync_bit    ; so that we can trigger on an edge
+	.u16 state		; Current state machine state.
+	.u8  bit_loop		; bit loop
+	.u8  last_hsync_bit	; so that we can trigger on an edge
 
-    .u16 singlefacet ; if 1 expose with single facet
-    .u16 currentfacet
+	.u16 singlefacet
+	.u16 currentfacet
 .ends
 .assign Variables, r10, r23, v
 
@@ -138,9 +138,11 @@ INIT:
 
     ;MOV v.singlefacet, r1 ; r1 is written to by python
 
-    ;; Populate some constants
-    MOV v.item_size, SCANLINE_ITEM_SIZE
-    MOV v.ringbuffer_size, SCANLINE_ITEM_SIZE * QUEUE_LEN
+	;; Populate some constants
+	MOV v.singlefacet, r1
+	MOV v.currentfacet, 0
+	MOV v.item_size, SCANLINE_ITEM_SIZE
+	MOV v.ringbuffer_size, SCANLINE_ITEM_SIZE * QUEUE_LEN
 
     ;; switch the laser full on at this period so that we reliably hit the
     ;; hsync sensor.
@@ -247,27 +249,36 @@ wait_for_sync:
     branch_if_hsync wait_for_sync_hsync_seen
     JMP MAIN_LOOP_NEXT
 wait_for_sync_hsync_seen:
-    CLR r30.t7 ; hsync finished, laser pwm1 off
-    CLR r30.t5 ; laser pwm2 off
-    /* calculate hsync_time to enable binning TODO: code clone! */
-    SUB r4, v.hsync_time, v.last_hsync_time  
-    MOV v.last_hsync_time, v.hsync_time
-    ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
-    /* SINGLE FACET TRICK
-    ;QBGT reset_facetnumber, v.currentfacet, FACETS-1
-    ;ADD v.currentfacet, v.currentfacet, 1
-    ;JMP facetcheck
-;reset_facetnumber:
-   ; MOV v.currentfacet, 0
-;facetcheck:
-    ;QBEQ dodatarun, v.singlefacet, 0
-    ;QBEQ MAIN_LOOP_NEXT, v.currentfacet, 3
-;dodatarun:
-    ;; two posibilities
-    MOV v.state, STATE_WAIT_FOR_DATA_RUN
-    MOV v.wait_countdown, 0
-    CLR r30.t14  ; y-step
-    JMP MAIN_LOOP_NEXT
+	CLR r30.t7 ; hsync finished, laser pwm1 off
+	CLR r30.t5 ; laser pwm2 off
+	/* calculate hsync_time to enable binning TODO: code clone! */
+	SUB r4, v.hsync_time, v.last_hsync_time  
+	MOV v.last_hsync_time, v.hsync_time
+	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
+	/* TODO: this only works for MVP demonstrator model 1
+	         if it is the the outlier continue else go back to STATE_DATA_WAIT_FOR_SYNC */
+	; for testing
+	;JMP active_data_wait
+	;MOV r5, 25015
+	;QBLT active_data_wait, r5, r4
+
+	MOV r1, FACETS-2
+	QBGT reset_facetnumber, r1, v.currentfacet 
+	ADD v.currentfacet, v.currentfacet, 1
+	JMP facetcheck
+reset_facetnumber:
+	MOV v.currentfacet, 0
+facetcheck:
+	QBEQ dodatarun, v.singlefacet, 0
+	MOV r1, 3
+	QBLT MAIN_LOOP_NEXT, r1, v.currentfacet
+
+dodatarun:
+	MOV v.state, STATE_WAIT_FOR_DATA_RUN
+	;; we step at the end of a data line, so here we should reset.
+	CLR r30.t14  ; y-step
+	MOV v.wait_countdown, 0
+	JMP MAIN_LOOP_NEXT
 
 STATE_WAIT_FOR_DATA_RUN:
     ADD v.wait_countdown, v.wait_countdown, 1

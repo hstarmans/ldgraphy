@@ -92,7 +92,10 @@ pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
 pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
 
 pruss.core0.load('./stabilizer.bin')
-pruss.core0.r1 = 0
+if SINGLE_FACET:
+    pruss.core0.r1 = 1
+else:
+    pruss.core0.r1 = 0
 pruss.core0.dram.write(data)
 pruss.core0.run()
 print("running core and uploaded data")
@@ -101,10 +104,7 @@ byte = START_RINGBUFFER # increased scanline size each loop
 response = 1
 
 while True and not pruss.core0.halted:
-    if SINGLE_FACET and (response%4!=0):
-        data = [COMMANDS.inv['CMD_SCAN_DATA']] + SCANLINE_DATA_SIZE*[0]
-    else:
-        data = [COMMANDS.inv['CMD_SCAN_DATA']] + LINE
+    data = [COMMANDS.inv['CMD_SCAN_DATA']] + LINE
     if response >= TOTAL_LINES - QUEUE_LEN:
         data = [COMMANDS.inv['CMD_EXIT']]
     pruss.intc.out_enable_one(IRQ) 

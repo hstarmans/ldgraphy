@@ -22,7 +22,7 @@ prototype.home('x')
 print("Homing y")
 prototype.home('y')
 print("Moving to start")
-prototype.move([prototype.position[0], prototype.position[1]+70])
+prototype.move([prototype.position[0], prototype.position[1]+70, 0])
 print("Reading binary")
 data = np.fromfile(FILENAME, dtype = np.uint8)
 bytes_inlane = FACETS_IN_LANE * BYTES_IN_LINE
@@ -31,9 +31,9 @@ for lane in range(0, round(len(data)/(bytes_inlane))):
     print("Exposing lane {}".format(lane))
     if lane > 0:
         print("Moving in x-direction for next lane")
-        prototype.move([prototype.position[0]+LANEWIDTH, prototype.position[1]])
+        prototype.move([prototype.position[0]+LANEWIDTH, prototype.position[1], 0])
         #TODO: THIS DISABLES SCANHEAD
-        prototype.enable_scanhead()
+        # prototype.enable_scanhead()
     if lane % 2 == 1:
         direction = True
         print("Start exposing forward lane")

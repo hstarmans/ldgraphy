@@ -58,8 +58,11 @@
 	.u16 state		; Current state machine state.
 	.u8  bit_loop		; bit loop
 	.u8  last_hsync_bit	; so that we can trigger on an edge
+
+	.u16 singlefacet
+	.u16 currentfacet
 .ends
-.assign Variables, r10, r22, v
+.assign Variables, r10, r23, v
 
 ;; Registers
 ;; r1 ... r9 : common use
@@ -134,6 +137,8 @@ INIT:
 	SBCO r0, C4, 4, 4
 
 	;; Populate some constants
+	MOV v.singlefacet, r1
+	MOV v.currentfacet, 0
 	MOV v.item_size, SCANLINE_ITEM_SIZE
 	MOV v.ringbuffer_size, SCANLINE_ITEM_SIZE * QUEUE_LEN
 
@@ -255,10 +260,21 @@ wait_for_sync_hsync_seen:
 	;MOV r5, 25015
 	;QBLT active_data_wait, r5, r4
 
+	MOV r1, FACETS-2
+	QBGT reset_facetnumber, r1, v.currentfacet 
+	ADD v.currentfacet, v.currentfacet, 1
+	JMP facetcheck
+reset_facetnumber:
+	MOV v.currentfacet, 0
+facetcheck:
+	QBEQ dodatarun, v.singlefacet, 0
+	MOV r1, 3
+	QBLT MAIN_LOOP_NEXT, r1, v.currentfacet
+
+dodatarun:
+	MOV v.state, STATE_WAIT_FOR_DATA_RUN
 	;; we step at the end of a data line, so here we should reset.
 	CLR r30.t14  ; y-step
-
-	MOV v.state, STATE_WAIT_FOR_DATA_RUN
 	MOV v.wait_countdown, 0
 	JMP MAIN_LOOP_NEXT
 
