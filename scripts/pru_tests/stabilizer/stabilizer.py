@@ -92,6 +92,7 @@ pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
 pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
 
 pruss.core0.load('./stabilizer.bin')
+pruss.core0.r1 = 0
 pruss.core0.dram.write(data)
 pruss.core0.run()
 print("running core and uploaded data")
@@ -114,7 +115,6 @@ while True and not pruss.core0.halted:
         else:
             sleep(1E-3)
     pruss.intc.ev_clear_one(pruss.intc.out_event[IRQ])
-    pruss.intc.out_enable_one(IRQ)
     [command_index] = pruss.core0.dram.map(length = 1, offset = byte)
     try:
         command = COMMANDS[command_index]
