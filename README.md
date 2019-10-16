@@ -19,15 +19,13 @@ digital potentiometer.
 The machine.py file in the machine folder allows you to play around with the machine. The idea is that you work with the machine from the python terminal. The interpolator folder contains a script to calculate the data that needs to be sent to the laser head. The interpolate script cannot be run on the beaglebone as it currently blows through the memory.
 
 ## To Do
-Critical
 * One program is executed on the CPU side which checks for events and sends lines to the PRU. This program has influence on the execution of the PRU. This can be deduced from the noise produced by the mirror motor. A time-out has been set which partly mitigates this problem. Still it exists!!
-* add possibility for single facet exposure
 * if you enable the scan head, you now wait 5 seconds for it to stabilize. Ideally, there would be some internal check.
 * check z-limits and z-homing offset
 * z home pin doesn't work
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz
-* load constants for stabilizer from python side, challenge is that you can't use PRU 
+* load constants for stabilizer from python side, challenge is that you can't use PRU dram as its already used by ringloop
 
 ## Install notes
 
