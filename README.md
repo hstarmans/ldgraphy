@@ -16,7 +16,7 @@ The BOM of the scan head can be found on [Hackaday](https://hackaday.io/project/
 ## Work in Progress
 The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3. A resolution below 100 micrometers can be obtained. The stepper motors can be moved and homed via the limit switches. The scanhad is mounted on a frame. The power of the laser can be set via a 
 digital potentiometer.
-The machine.py file in the machine folder allows you to play around with the machine. The idea is that you work with the machine from the python terminal. An alternative is the script folder. Here different features can be tested like rotating the prism or setting the power of the laser. Ensure you have initialized the motors via SPI. The interpolator folder contains a script to calculate the data that needs to be sent to the laser head. The interpolate script cannot be run on the beaglebone as it currently blows through the memory.
+The machine.py file in the machine folder allows you to play around with the machine. The idea is that you work with the machine from the python terminal. The interpolator folder contains a script to calculate the data that needs to be sent to the laser head. The interpolate script cannot be run on the beaglebone as it currently blows through the memory.
 
 ## To Do
 * One program is executed on the CPU side which checks for events and sends lines to the PRU. This program has influence on the execution of the PRU. This can be deduced from the noise produced by the mirror motor. A time-out has been set which partly mitigates this problem. Still it exists!!
