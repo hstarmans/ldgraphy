@@ -272,14 +272,14 @@ class Machine:
             /(2*speed*steps_per_mm*INST_PER_LOOP)))
 
 
-    def enable_steppers():
+    def enable_steppers(self):
         '''
         enables stepper motors by setting enable pin to low
         '''
         GPIO.output(self.pins['step_enable'], GPIO.LOW)
 
 
-    def disable_steppers():
+    def disable_steppers(self):
         '''
         disables stepper motors by setting enable pin to high
         '''
@@ -415,7 +415,7 @@ class Machine:
         '''
         SCANLINE_DATA_SIZE = self.bytesinline
         SCANLINE_HEADER_SIZE = 1
-        START_RINGBUFFER = 1
+        START_RINGBUFFER = 5 
         QUEUE_LEN = 8
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         self.pruss.intc.out_enable_one(self.IRQ) 
@@ -514,10 +514,10 @@ class Machine:
         if (line_data.max() < 1 or line_data.max() > 255):
             raise Exception('Data invalid, values out of range.')
         if move:
-            GPIO.output(self.pins['y_enable'], GPIO.LOW)
+            self.enable_steppers()
         else:
-            GPIO.output(self.pins['y_enable'], GPIO.HIGH)
-        
+            self.disable_steppers()
+
         if direction:
             GPIO.output(self.pins['y_dir'], GPIO.HIGH)
         else:
@@ -527,11 +527,14 @@ class Machine:
         SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
         byte = START_RINGBUFFER = 5
         # prep scanner by writing 8 empty lines to buffer
-        write_data = [self.ERRORS.inv['ERROR_NONE']]
+        # TODO: this write data is a sort of constant, 
+        #       the 4 zeros are for sync errors which never happens
+        write_data = [self.ERRORS.inv['ERROR_NONE']] + [0]*4
         empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
         empty_line += [0]*self.bytesinline
         write_data += empty_line*QUEUE_LEN
         self.pruss.core0.dram.write(write_data)
+        print("receiving current position")
         # receive current position
         byte = self.receive_command(None)
         while byte != START_RINGBUFFER:
@@ -563,7 +566,6 @@ class Machine:
                 byte += SCANLINE_ITEM_SIZE
                 if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
                     byte = START_RINGBUFFER
-        GPIO.output(self.pins['y_enable'], GPIO.HIGH) # motor off
 
 
         if takepicture: 
