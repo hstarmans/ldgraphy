@@ -26,6 +26,7 @@ The machine.py file in the machine folder allows you to play around with the mac
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz
 * load constants for stabilizer from python side, challenge is that you can't use PRU dram as its already used by ringloop
+* check if you implemented the ring buffer correctly
 
 ## Install notes
 
