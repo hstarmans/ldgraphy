@@ -272,6 +272,8 @@ class Interpolator:
         :param filename name of file
         '''
         pixeldata=pixeldata.astype(np.uint8)
+        if not os.path.exists(self.debug_folder):
+            os.makedirs(self.debug_folder)
         pixeldata.tofile(os.path.join(self.debug_folder, filename))
 
 
@@ -282,7 +284,6 @@ if __name__ == "__main__":
     dir_path = os.path.dirname(os.path.realpath(__file__))
     url = os.path.join(dir_path, 'test-patterns', 'line-resolution-test.ps')
     ptrn = interpolator.patternfile(url)
-    #TODO: make debug dir
     interpolator.writebin(ptrn, "test.bin")
     pat = interpolator.readbin("test.bin")
     print("The shape of the pattern is {}".format(pat.shape))
