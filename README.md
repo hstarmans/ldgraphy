@@ -20,6 +20,9 @@ The machine.py file in the machine folder allows you to play around with the mac
 
 ## To Do
 * One program is executed on the CPU side which checks for events and sends lines to the PRU. This program has influence on the execution of the PRU. This can be deduced from the noise produced by the mirror motor. A time-out has been set which partly mitigates this problem. Still it exists!!
+* Noise only occurs if the mirror motor is in "sync"
+* If no lines are sent the mirror motor keeps spinning and does not get into sync
+  Once it has been into sync it is fine
 * if you enable the scan head, you now wait 5 seconds for it to stabilize. Ideally, there would be some internal check.
 * check z-limits and z-homing offset
 * z home pin doesn't work

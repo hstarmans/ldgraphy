@@ -221,7 +221,7 @@ class Machine:
         self.IRQ = 2
         self.pruss = Icss('/dev/uio/pruss/module')
         self.irq = Uio("/dev/uio/pruss/irq%d" % self.IRQ, blocking=False)
-        self.pruss.initialize()
+        self.pruss.initialize(fill_memories=True)
 
 
     def pindictionary(self):
@@ -397,7 +397,14 @@ class Machine:
         self.pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
         self.pruss.core0.load(join(self.bin_folder, './stabilizer.bin'))
         # flush memory, in new version of Py-UIO there is a function to do this
-        self.pruss.core0.dram.write([0]*self.bytesinline*8+[0]*5)
+        # prep scanner by writing 8 empty lines to buffer
+        # TODO: this write data is a sort of constant, 
+        #       the 4 zeros are for sync errors which never happens
+        write_data = [self.ERRORS.inv['ERROR_NONE']] + [0]*4
+        empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
+        empty_line += [0]*self.bytesinline
+        write_data += empty_line*8  #QUEE LEN
+        self.pruss.core0.dram.write(write_data)
         if singlefacet:
             self.pruss.core0.r1 = 1
         else:

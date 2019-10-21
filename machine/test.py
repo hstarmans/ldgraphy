@@ -18,11 +18,11 @@ MULTIPLIER = 1
 
 prototype = Machine()
 print("Homing x")
-#prototype.home('x')
+prototype.home('x')
 print("Homing y")
-#prototype.home('y')
+prototype.home('y')
 print("Moving to start")
-#prototype.move([prototype.position[0], prototype.position[1]+70, 0])
+prototype.move([prototype.position[0], prototype.position[1]+70, 0])
 print("Reading binary")
 data = np.fromfile(FILENAME, dtype = np.uint8)
 bytes_inlane = FACETS_IN_LANE * BYTES_IN_LINE

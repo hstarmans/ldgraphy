@@ -31,6 +31,7 @@
 #define CYCLE_COUNTER_OFFSET  0x0C
 
 
+
 // Mapping some fixed registers to named variables.
 // We have enough registers to keep things readable.
 .struct Variables
@@ -49,11 +50,11 @@
     .u32 hsync_time        ; time when we have seen the hsync
     .u32 last_hsync_time
     .u32 sync_laser_on_time
+    
 
 
     .u32 item_start            ; Start position of current item in ringbuffer
     .u32 item_pos        ; position within item.
-    .u32 sync_fails         ; number of lines failed to sync
 
 	.u16 state		; Current state machine state.
 	.u8  bit_loop		; bit loop
@@ -62,7 +63,8 @@
 	.u16 singlefacet
 	.u16 currentfacet
 .ends
-.assign Variables, r10, r23, v
+.assign Variables, r10, r22, v
+
 
 ;; Registers
 ;; r1 ... r9 : common use
@@ -152,9 +154,9 @@ INIT:
 
     MOV v.item_start, START_RINGBUFFER         ; command byte position in DRAM
     MOV v.state, STATE_IDLE
-    MOV v.sync_fails, 0
 
     start_cpu_cycle_counter
+
 
 MAIN_LOOP:
     LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
@@ -251,24 +253,19 @@ wait_for_sync:
 wait_for_sync_hsync_seen:
 	CLR r30.t7 ; hsync finished, laser pwm1 off
 	CLR r30.t5 ; laser pwm2 off
-	/* calculate hsync_time to enable binning TODO: code clone! */
-	SUB r4, v.hsync_time, v.last_hsync_time  
 	MOV v.last_hsync_time, v.hsync_time
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
-	/* TODO: this only works for MVP demonstrator model 1
-	         if it is the the outlier continue else go back to STATE_DATA_WAIT_FOR_SYNC */
-	; for testing
-	;JMP active_data_wait
-	;MOV r5, 25015
-	;QBLT active_data_wait, r5, r4
-
+	/* if single facet is enabled daterun only on third facet */
 	MOV r1, FACETS-2
 	QBGT reset_facetnumber, r1, v.currentfacet 
 	ADD v.currentfacet, v.currentfacet, 1
 	JMP facetcheck
+
+
 reset_facetnumber:
 	MOV v.currentfacet, 0
 facetcheck:
+; if single facet is disabled always do datarun
 	QBEQ dodatarun, v.singlefacet, 0
 	MOV r1, 3
 	QBLT MAIN_LOOP_NEXT, r1, v.currentfacet
@@ -279,6 +276,7 @@ dodatarun:
 	CLR r30.t14  ; y-step
 	MOV v.wait_countdown, 0
 	JMP MAIN_LOOP_NEXT
+
 
 STATE_WAIT_FOR_DATA_RUN:
     ADD v.wait_countdown, v.wait_countdown, 1
@@ -337,25 +335,29 @@ advance_sled_done:
     QBLT rb_advanced, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
     MOV v.item_start, START_RINGBUFFER    ; Wrap around
 rb_advanced:
-    MOV v.wait_countdown, END_OF_DATA_WAIT_TICKS
+    ;MOV v.wait_countdown, END_OF_DATA_WAIT_TICKS
     MOV v.state, STATE_AWAIT_MORE_DATA
     JMP MAIN_LOOP_NEXT
 
+
+;; zeller had a state await for more data
+;; it would send you back to idle if you waited too long
+;; the current practice is to keep the polygon runnning unless global times creates overloads
+
+
 STATE_AWAIT_MORE_DATA:
-    SUB v.wait_countdown, v.wait_countdown, 1
-    QBNE active_data_wait, v.wait_countdown, 0
+    ;SUB v.wait_countdown, v.wait_countdown, 1
+    ;QBNE active_data_wait, v.wait_countdown, 0
     ;; ok, we waited too long, let us switch off motors and go back
     ;; to idle.
-    MOV r1, 1000000 ; random just some upper limit to prevent overflow
-    QBLT ringbufferreset, r1, v.sync_fails 
-    ADD v.sync_fails, v.sync_fails, 1
-ringbufferreset:
-    MOV v.state, STATE_IDLE
-    JMP MAIN_LOOP_NEXT
+    ;MOV v.state, STATE_IDLE
+    ;JMP MAIN_LOOP_NEXT
 
 active_data_wait:
     LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
     QBEQ FINISH, r1.b0, CMD_EXIT
+; zeller didn't do this which led to loss of sync
+    MOV v.state, STATE_CONFIRM_STABLE
     QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
 
     MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
@@ -392,7 +394,6 @@ FINISH:
     ;; Tell host that we have seen the CMD_EXIT and acknowledge with CMD_DONE
     MOV r1.b0, CMD_DONE
     SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
-    SBCO v.sync_fails, CONST_PRUDRAM, SYNC_FAIL_POS, 4
     HALT
 
 REPORT_ERROR_MIRROR:
