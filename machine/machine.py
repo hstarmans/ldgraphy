@@ -541,7 +541,6 @@ class Machine:
         empty_line += [0]*self.bytesinline
         write_data += empty_line*QUEUE_LEN
         self.pruss.core0.dram.write(write_data)
-        print("receiving current position")
         # receive current position
         byte = self.receive_command(None)
         while byte != START_RINGBUFFER:

@@ -24,6 +24,7 @@ The machine.py file in the machine folder allows you to play around with the mac
 * If no lines are sent the mirror motor keeps spinning and does not get into sync
   Once it has been into sync it is fine
 * if you enable the scan head, you now wait 5 seconds for it to stabilize. Ideally, there would be some internal check.
+* if the laser module is on for longer than an hour a buffer overflows`
 * check z-limits and z-homing offset
 * z home pin doesn't work
 * use asyncio loop for stabilizer
