@@ -236,10 +236,18 @@ confirm_stable_test_for_hsync:
 confirm_stable_hsync_seen:
     CLR r30.t7 ; hsync finished, laser pwm1 off
     CLR r30.t5 ; laser pwm2 off
+    ;; ADDED 
+    MOV v.last_hsync_time, v.hsync_time
     ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
     /* todo: test if in between expected range, otherwise state wait stable 
              zeller went straight to data run but I want it to pass the facet filter */
-    JMP active_data_wait
+    ;; changed would directly jump to data wait
+    MOV v.state, STATE_AWAIT_MORE_DATA
+    JMP MAIN_LOOP_NEXT
+
+    ;; TODO:
+    ;; There are three synchronization; threshold, state_confirm stable and state data wait
+    ;;  you could reduce this to two!
 
     ;; Sync step between data lines.
 STATE_DATA_WAIT_FOR_SYNC:
@@ -257,7 +265,9 @@ wait_for_sync_hsync_seen:
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
 	/* if single facet is enabled daterun only on third facet */
 	MOV r1, FACETS-2
+    ; TODO: use different command! last should be the constant
 	QBGT reset_facetnumber, r1, v.currentfacet 
+    ; TODO: facet should be increasedzz AFTER EACH HSYNC!!
 	ADD v.currentfacet, v.currentfacet, 1
 	JMP facetcheck
 
@@ -335,30 +345,17 @@ advance_sled_done:
     QBLT rb_advanced, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
     MOV v.item_start, START_RINGBUFFER    ; Wrap around
 rb_advanced:
-    ;MOV v.wait_countdown, END_OF_DATA_WAIT_TICKS
     MOV v.state, STATE_AWAIT_MORE_DATA
     JMP MAIN_LOOP_NEXT
 
 
-;; zeller had a state await for more data
-;; it would send you back to idle if you waited too long
-;; the current practice is to keep the polygon runnning unless global times creates overloads
-
-
 STATE_AWAIT_MORE_DATA:
-    ;SUB v.wait_countdown, v.wait_countdown, 1
-    ;QBNE active_data_wait, v.wait_countdown, 0
-    ;; ok, we waited too long, let us switch off motors and go back
-    ;; to idle.
-    ;MOV v.state, STATE_IDLE
-    ;JMP MAIN_LOOP_NEXT
-
-active_data_wait:
     LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
     QBEQ FINISH, r1.b0, CMD_EXIT
-; zeller didn't do this which led to loss of sync
     MOV v.state, STATE_CONFIRM_STABLE
     QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
+
+    ;;TODO: what if command is invalid!!?, should map to cmd_scan_data
 
     MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
     MOV v.bit_loop, 7
