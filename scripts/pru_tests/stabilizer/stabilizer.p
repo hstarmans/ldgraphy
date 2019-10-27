@@ -199,6 +199,9 @@ spinup_done:
     ;; Switch on the laser the full time and wait until we get it within
     ;; some acceptable margin. Sometimes, mirrors have a harder time
     ;; synchronizing in the beginning. We wait until we are stable.
+    ;; There are two synchronization; threshold and state data wait sync
+    ;; Laser is not stable after state wait stable, sent 100 blank lines prior to expsure
+
 STATE_WAIT_STABLE:
     ;; If we are too long waiting for a sync, assume there is an issue
     ;; with the laser not properly rotating or no feedback.
@@ -217,39 +220,11 @@ wait_stable_hsync_seen:
     /* zeller used something different but this didn't work with all motors */
     ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
     branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_THRESH, TICKS_PER_MIRROR_SEGMENT+JITTER_THRESH
-    MOV v.state, STATE_CONFIRM_STABLE
-    JMP MAIN_LOOP_NEXT
-
+    MOV v.state, STATE_DATA_WAIT_FOR_SYNC
 wait_stable_not_synced_yet:
     JMP MAIN_LOOP_NEXT
 
-    ;; We got synchronization and know when it is time to switch on
-    ;; the laser to get the next synchronization. Lets see if we can repeat
-    ;; this.
-STATE_CONFIRM_STABLE:
-    QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
-    SET r30.t7    ; laser pwm1 on
-    SET r30.t5    ; laser pwm2 on
-confirm_stable_test_for_hsync:
-    branch_if_hsync confirm_stable_hsync_seen
-    JMP MAIN_LOOP_NEXT
-confirm_stable_hsync_seen:
-    CLR r30.t7 ; hsync finished, laser pwm1 off
-    CLR r30.t5 ; laser pwm2 off
-    ;; ADDED 
-    MOV v.last_hsync_time, v.hsync_time
-    ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
-    /* todo: test if in between expected range, otherwise state wait stable 
-             zeller went straight to data run but I want it to pass the facet filter */
-    ;; changed would directly jump to data wait
-    MOV v.state, STATE_AWAIT_MORE_DATA
-    JMP MAIN_LOOP_NEXT
-
-    ;; TODO:
-    ;; There are three synchronization; threshold, state_confirm stable and state data wait
-    ;;  you could reduce this to two!
-
-    ;; Sync step between data lines.
+    ;; Sync step between data lines. This sync step also sets facet counter
 STATE_DATA_WAIT_FOR_SYNC:
     QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time ; not yet
     ;; Now we are close enough to the hsync-block, switch on the laser.
@@ -263,29 +238,33 @@ wait_for_sync_hsync_seen:
 	CLR r30.t5 ; laser pwm2 off
 	MOV v.last_hsync_time, v.hsync_time
 	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
-	/* if single facet is enabled daterun only on third facet */
-	MOV r1, FACETS-2
+    ; if single facet is disabled always continue
+	QBEQ checkheader, v.singlefacet, 0
+	/* if single facet is enabled daterun only on continue on third facet */
+	MOV r1, FACETS-2    
     ; TODO: use different command! last should be the constant
 	QBGT reset_facetnumber, r1, v.currentfacet 
-    ; TODO: facet should be increasedzz AFTER EACH HSYNC!!
 	ADD v.currentfacet, v.currentfacet, 1
 	JMP facetcheck
-
-
 reset_facetnumber:
 	MOV v.currentfacet, 0
 facetcheck:
-; if single facet is disabled always do datarun
-	QBEQ dodatarun, v.singlefacet, 0
 	MOV r1, 3
+    ; TODO: use different command! last should be the constant
 	QBLT MAIN_LOOP_NEXT, r1, v.currentfacet
 
-dodatarun:
-	MOV v.state, STATE_WAIT_FOR_DATA_RUN
-	;; we step at the end of a data line, so here we should reset.
-	CLR r30.t14  ; y-step
-	MOV v.wait_countdown, 0
-	JMP MAIN_LOOP_NEXT
+checkheader:
+    LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
+    QBEQ FINISH, r1.b0, CMD_EXIT
+    QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
+    ;;TODO: what if command is invalid!!?, should map to cmd_scan_data
+    MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
+    MOV v.bit_loop, 7
+    MOV v.state, STATE_WAIT_FOR_DATA_RUN
+    MOV v.wait_countdown, 0
+    ;; we step at the end of a data line, so here we should reset.
+    CLR r30.t14  ; y-step
+    JMP MAIN_LOOP_NEXT
 
 
 STATE_WAIT_FOR_DATA_RUN:
@@ -345,23 +324,9 @@ advance_sled_done:
     QBLT rb_advanced, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
     MOV v.item_start, START_RINGBUFFER    ; Wrap around
 rb_advanced:
-    MOV v.state, STATE_AWAIT_MORE_DATA
-    JMP MAIN_LOOP_NEXT
-
-
-STATE_AWAIT_MORE_DATA:
-    LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
-    QBEQ FINISH, r1.b0, CMD_EXIT
-    MOV v.state, STATE_CONFIRM_STABLE
-    QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
-
-    ;;TODO: what if command is invalid!!?, should map to cmd_scan_data
-
-    MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
-    MOV v.bit_loop, 7
-
     MOV v.state, STATE_DATA_WAIT_FOR_SYNC
     JMP MAIN_LOOP_NEXT
+
 
 MAIN_LOOP_NEXT:
     ;; The current state set whatever state it needed, now wait for the
@@ -380,8 +345,6 @@ MAIN_LOOP_NEXT:
     XOR r30, r30, (1<<2)
     MOV v.polygon_time, 0
 mirror_toggle_done:
-
-    ;; GPIO out, once per loop.
     JMP MAIN_LOOP
 
 FINISH:
