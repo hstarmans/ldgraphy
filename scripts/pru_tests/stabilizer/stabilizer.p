@@ -25,8 +25,6 @@
 
 #define PRU0_ARM_INTERRUPT 19
 #define CONST_PRUDRAM       C24
-
-
 #define PRUSS_PRU_CTL      0x22000
 #define CYCLE_COUNTER_OFFSET  0x0C
 
@@ -39,29 +37,21 @@
     ;; immediate, so we have to store them in registers.
     .u32 ringbuffer_size
     .u32 item_size
-
     .u32 start_sync_after    ; time after which we should start sync.
-
     ;; Variables used.
     .u32 global_time    ; our cycle time.
-
     .u32 polygon_time
     .u32 wait_countdown    ; countdown used in states  for certain states to finish
     .u32 hsync_time        ; time when we have seen the hsync
     .u32 last_hsync_time
     .u32 sync_laser_on_time
-    
-
-
     .u32 item_start            ; Start position of current item in ringbuffer
     .u32 item_pos        ; position within item.
-
-	.u16 state		; Current state machine state.
-	.u8  bit_loop		; bit loop
-	.u8  last_hsync_bit	; so that we can trigger on an edge
-
-	.u16 singlefacet
-	.u16 currentfacet
+    .u16 state        ; Current state machine state.
+    .u8  bit_loop        ; bit loop
+    .u8  last_hsync_bit    ; so that we can trigger on an edge
+    .u16 singlefacet
+    .u16 currentfacet
 .ends
 .assign Variables, r10, r22, v
 
@@ -137,24 +127,17 @@ INIT:
     LBCO r0, C4, 4, 4
     CLR r0, r0, 4
     SBCO r0, C4, 4, 4
-
+    ;; Populate some constants
     ;MOV v.singlefacet, r1 ; r1 is written to by python
-
-	;; Populate some constants
-	MOV v.singlefacet, r1
-	MOV v.currentfacet, 0
-	MOV v.item_size, SCANLINE_ITEM_SIZE
-	MOV v.ringbuffer_size, SCANLINE_ITEM_SIZE * QUEUE_LEN
-
+    MOV v.singlefacet, r1
+    MOV v.currentfacet, 0
+    MOV v.item_size, SCANLINE_ITEM_SIZE
+    MOV v.ringbuffer_size, SCANLINE_ITEM_SIZE * QUEUE_LEN
     ;; switch the laser full on at this period so that we reliably hit the
     ;; hsync sensor.
     MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW - 1
-
-    ;; Set GPIO bits to writable. Output bits need to be set to 0.
-
     MOV v.item_start, START_RINGBUFFER         ; command byte position in DRAM
     MOV v.state, STATE_IDLE
-
     start_cpu_cycle_counter
 
 
@@ -176,11 +159,9 @@ STATE_IDLE:
     MOV v.polygon_time, 0
     MOV v.state, STATE_SPINUP
     MOV v.sync_laser_on_time, 0
-
     ;; prepare data
     MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
     MOV v.bit_loop, 7  
-
     JMP MAIN_LOOP_NEXT
 
     ;; Spinup. The mirror takes a second or so until it is ready,
@@ -234,24 +215,18 @@ wait_for_sync:
     branch_if_hsync wait_for_sync_hsync_seen
     JMP MAIN_LOOP_NEXT
 wait_for_sync_hsync_seen:
-	CLR r30.t7 ; hsync finished, laser pwm1 off
-	CLR r30.t5 ; laser pwm2 off
-	MOV v.last_hsync_time, v.hsync_time
-	ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
+    CLR r30.t7 ; hsync finished, laser pwm1 off
+    CLR r30.t5 ; laser pwm2 off
+    MOV v.last_hsync_time, v.hsync_time
+    ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
     ; if single facet is disabled always continue
-	QBEQ checkheader, v.singlefacet, 0
-	/* if single facet is enabled daterun only on continue on third facet */
-	MOV r1, FACETS-2    
-    ; TODO: use different command! last should be the constant
-	QBGT reset_facetnumber, r1, v.currentfacet 
-	ADD v.currentfacet, v.currentfacet, 1
-	JMP facetcheck
+    QBEQ checkheader, v.singlefacet, 0
+    /* if single facet is enabled daterun only on continue on third facet */
+    QBLT reset_facetnumber, v.currentfacet, 2 
+    ADD v.currentfacet, v.currentfacet, 1
+    JMP MAIN_LOOP_NEXT
 reset_facetnumber:
-	MOV v.currentfacet, 0
-facetcheck:
-	MOV r1, 3
-    ; TODO: use different command! last should be the constant
-	QBLT MAIN_LOOP_NEXT, r1, v.currentfacet
+    MOV v.currentfacet, 0
 
 checkheader:
     LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
@@ -265,7 +240,6 @@ checkheader:
     ;; we step at the end of a data line, so here we should reset.
     CLR r30.t14  ; y-step
     JMP MAIN_LOOP_NEXT
-
 
 STATE_WAIT_FOR_DATA_RUN:
     ADD v.wait_countdown, v.wait_countdown, 1
@@ -287,7 +261,6 @@ data_run_data_output:
     MOV r2, v.item_start
     ADD r2, r2, v.item_pos
     LBCO r1.b0, CONST_PRUDRAM, r2, 1
-
     QBBS data_laser_set_on, r1.b0, v.bit_loop
     CLR r30.t7 ; laser pwm1 off
     CLR r30.t5 ; laser pwm2 off
@@ -296,7 +269,6 @@ data_laser_set_on:
     SET r30.t7 ; laser pwm1 on
     SET r30.t5 ; laser pwm2 on
 data_laser_set_done:
-
     QBEQ data_run_next_byte, v.bit_loop, 0
     SUB v.bit_loop, v.bit_loop, 1
     JMP MAIN_LOOP_NEXT
@@ -304,12 +276,11 @@ data_run_next_byte:
     ADD v.item_pos, v.item_pos, 1
     MOV v.bit_loop, 7 
     JMP MAIN_LOOP_NEXT
-
     ;;  not really necessary to be its own state.
+
 STATE_ADVANCE_RINGBUFFER:
     CLR r30.t7 ; laser pwm1 off
     CLR r30.t5 ; laser pwm2 off
-
     ;; check if we need to advance stepper
     LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
     QBEQ advance_sled_done, r1.b0, CMD_SCAN_DATA_NO_SLED
@@ -319,7 +290,6 @@ advance_sled_done:
     MOV r1.b0, CMD_EMPTY
     SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
     MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; tell that status changed.
-
     ADD v.item_start, v.item_start, v.item_size ; advance in ringbuffer
     QBLT rb_advanced, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
     MOV v.item_start, START_RINGBUFFER    ; Wrap around
@@ -327,17 +297,14 @@ rb_advanced:
     MOV v.state, STATE_DATA_WAIT_FOR_SYNC
     JMP MAIN_LOOP_NEXT
 
-
 MAIN_LOOP_NEXT:
     ;; The current state set whatever state it needed, now wait for the
     ;; end of our period to execute the actions: set GPIO bits.
     wait_to_next_tick_and_reset TICK_DELAY
     ;; XOR r30, r30, (1<<5)    ; debug output
-
     ;; Global time update. The global time wraps around after 1h or so
     ;; but it is sufficient for the typical exposure times of a few minutes.
     ADD v.global_time, v.global_time, 1
-
     ;; time for mirror toggle ?
     ADD v.polygon_time, v.polygon_time, 1
     MOV r1, (TICKS_PER_MIRROR_SEGMENT*FACETS/6)/2

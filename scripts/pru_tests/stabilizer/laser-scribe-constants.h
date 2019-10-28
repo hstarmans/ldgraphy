@@ -58,8 +58,6 @@
 
 
 #define SPINUP_TICKS 3000000 // 1.5 seconds
-
 #define MAX_WAIT_STABLE_TICKS  2250000 // 1.125 seconds, laser on waiting for sync error if expires
-#define END_OF_DATA_WAIT_TICKS 1500000 // 0.75 seconds, no data in time reset to idle, +1 sync fail
 
 #endif // LASER_SCRIBE_CONSTANTS_H
