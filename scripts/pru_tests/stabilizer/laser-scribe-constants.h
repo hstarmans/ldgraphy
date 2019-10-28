@@ -1,7 +1,10 @@
 /* -*- mode: c++; c-basic-offset: 4; indent-tabs-mode: nil; -*-
+ * (c) 2019 Rik Starmans  <info@hexastorm.com>
+ * 
+ * Removed constansts as they are loaded in via Python.
+ *
  * (c) 2017 Henner Zeller <h.zeller@acm.org>
  *
- * This file is part of LDGraphy http://github.com/hzeller/ldgraphy
  *
  * LDGraphy is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

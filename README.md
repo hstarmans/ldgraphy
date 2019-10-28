@@ -26,6 +26,7 @@ The machine.py file in the machine folder allows you to play around with the mac
 * check the speed of polygon in hertz; this might explain why different polygon vendors have such different behavior
 * remove state idle from stabilizer
 * modify bytes in line
+* you need to decide what to do with sync_fail pos
 * add updated stabilizer to machine class
 * constants are now sprinkled over the python code and duplicate. This is confusing, also see above.
 

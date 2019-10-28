@@ -1,8 +1,11 @@
 ;; -*- asm -*-
+;; (c) 2019 Rik Stamrans <info@hexastorm.com>
+;;
+;; Modified code so it would work with prism, simplified state machine
+;; and most constants are now loaded in from Python.
 ;;
 ;; (c) 2017 Henner Zeller <h.zeller@acm.org>
 ;;
-;; This file is part of LDGraphy. http://github.com/hzeller/ldgraphy
 ;;
 ;; LDGraphy is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -152,23 +155,7 @@ SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
     MOV v.item_start, START_RINGBUFFER    ; Wrap around
     MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; tell that status changed.
 
-    MOV v.state, STATE_IDLE
     start_cpu_cycle_counter
-
-
-MAIN_LOOP:
-    LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
-    QBEQ FINISH, r1.b0, CMD_EXIT               ; react to exit immediately
-    JMP v.state                                   ; switch/case with direct jump :)
-
-
-    ;; Each of these states must not use more than TICK_DELAY steps
-
-    ;; Waiting for Data to arrive
-    ;; STATE IDLE IS NOT NEEDED!!
-STATE_IDLE:
-    QBEQ FINISH, r1.b0, CMD_EXIT
-    QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
     MOV v.global_time, 0                        ; have monotone increasing time for 1h or so
     MOV v.wait_countdown, v.spinup_ticks
     MOV v.last_hsync_time, 0
@@ -177,8 +164,16 @@ STATE_IDLE:
     MOV v.sync_laser_on_time, 0
     ;; prepare data
     MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
-    MOV v.bit_loop, 7  
-    JMP MAIN_LOOP_NEXT
+    MOV v.bit_loop, 7 
+    JMP MAIN_LOOP_NEXT 
+
+MAIN_LOOP:
+    LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
+    QBEQ FINISH, r1.b0, CMD_EXIT               ; react to exit immediately
+    JMP v.state                                   ; switch/case with direct jump :)
+
+
+    ;; Each of these states must not use more than TICK_DELAY steps
 
     ;; Spinup. The mirror takes a second or so until it is ready,
     ;; dont switch on the laser quite yet.
