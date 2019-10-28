@@ -1,5 +1,5 @@
 ;; -*- asm -*-
-;; (c) 2019 Rik Stamrans <info@hexastorm.com>
+;; (c) 2019 Rik Starmans <info@hexastorm.com>
 ;;
 ;; Modified code so it would work with prism, simplified state machine
 ;; and most constants are now loaded in from Python.
