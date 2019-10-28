@@ -127,16 +127,31 @@ INIT:
     LBCO r0, C4, 4, 4
     CLR r0, r0, 4
     SBCO r0, C4, 4, 4
+
+    lbco	&v, c24, 0, SIZE(v)
+
     ;; Populate some constants
     ;MOV v.singlefacet, r1 ; r1 is written to by python
-    MOV v.singlefacet, r1
+    ;MOV v.singlefacet, r1
     MOV v.currentfacet, 0
     MOV v.item_size, SCANLINE_ITEM_SIZE
     MOV v.ringbuffer_size, SCANLINE_ITEM_SIZE * QUEUE_LEN
     ;; switch the laser full on at this period so that we reliably hit the
     ;; hsync sensor.
     MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW - 1
+    
+    
+    
+;; set the ring to zero
     MOV v.item_start, START_RINGBUFFER         ; command byte position in DRAM
+    MOV r1.b0, CMD_EMPTY
+ringbufferzero:
+SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
+    ADD v.item_start, v.item_start, v.item_size ; advance in ringbuffer
+    QBLT ringbufferzero, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
+    MOV v.item_start, START_RINGBUFFER    ; Wrap around
+    MOV R31.b0, PRU0_ARM_INTERRUPT+16 ; tell that status changed.
+
     MOV v.state, STATE_IDLE
     start_cpu_cycle_counter
 

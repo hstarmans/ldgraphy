@@ -9,7 +9,7 @@ The result of this test is measured with a camera with a neutral density filter
 and without a lens.
 """
 from time import sleep
-from ctypes import c_uint32
+from ctypes import c_uint32, c_uint16, c_uint8, Structure
 
 from uio.ti.icss import Icss
 from uio.device import Uio
@@ -69,17 +69,31 @@ else:
     GPIO.output(y_enable_output, GPIO.HIGH)
 
 
-if TOTAL_LINES <= QUEUE_LEN:
-    raise Exception("Less than {} lines!".format(QUEUE_LEN))
-
-# DATA to send before PRU start
-data = [ERRORS.inv['ERROR_NONE']] + [0]*4
-data += ([COMMANDS.inv['CMD_SCAN_DATA']] + LINE)* QUEUE_LEN
-
 # ENABLE polygon motor
 polygon_enable = "P9_23"
 GPIO.setup(polygon_enable, GPIO.OUT)
 GPIO.output(polygon_enable, GPIO.LOW)
+
+# map and set parameters
+class Variables( Structure ):
+    _fields_ = [
+            ("ringbuffer_size", c_uint32),  
+            ("item_size", c_uint32),
+            ("start_sync_after", c_uint32),
+            ("global_time", c_uint32),
+            ("polygon_time", c_uint32),
+            ("wait_countdown", c_uint32),
+            ("hsync_time", c_uint32),
+            ("last_hsync_time", c_uint32),
+            ("sync_laser_on_time", c_uint32),
+            ("item_start", c_uint32),
+            ("item_pos", c_uint32),
+            ("state", c_uint16),
+            ("bit_loop", c_uint8),
+            ("last_hsync_bit", c_uint8),
+            ("single_facet", c_uint16),
+            ("current_facet", c_uint16),
+        ]
 
 
 pruss = Icss("/dev/uio/pruss/module")
@@ -92,11 +106,13 @@ pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
 pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
 
 pruss.core0.load('./stabilizer.bin')
+
+params0 = pruss.core0.dram.map(Variables)
 if SINGLE_FACET:
-    pruss.core0.r1 = 1
+    params0.single_facet = 1
 else:
-    pruss.core0.r1 = 0
-pruss.core0.dram.write(data)
+    params0.single_facet = 0
+
 pruss.core0.run()
 print("running core and uploaded data")
 
@@ -105,7 +121,7 @@ response = 1
 
 while True and not pruss.core0.halted:
     data = [COMMANDS.inv['CMD_SCAN_DATA']] + LINE
-    if response >= TOTAL_LINES - QUEUE_LEN:
+    if response >= TOTAL_LINES:
         data = [COMMANDS.inv['CMD_EXIT']]
     pruss.intc.out_enable_one(IRQ) 
     while True:
@@ -127,10 +143,10 @@ while True and not pruss.core0.halted:
         break
     byte += SCANLINE_ITEM_SIZE
     if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
-        byte = START_RINGBUFFER
-    response += 1
+        byte = START_RINGBUFFER    
     if response == TOTAL_LINES:
         break
+    response += 1
     if not response%(RPM/60*FACETS):
         print("Sent {} lines".format(response))
 
