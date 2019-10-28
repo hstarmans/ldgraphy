@@ -26,9 +26,17 @@ COMMANDS = bidict(enumerate(COMMANDS))
 ERRORS = ['ERROR_NONE', 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC']
 ERRORS += ['ERROR_TIME_OVERRUN']
 ERRORS = bidict(enumerate(ERRORS))
-RPM = 2400
-FACETS = 4
-SCANLINE_DATA_SIZE = 937 
+RPM = 2400                    # revolutions per minute
+TICK_DELAY = 100              # steps in a loop
+PRU_SPEED = 200E6             # hertz
+SPINUP_TICKS = 1.5            # seconds
+MAX_WAIT_STABLE_TICKS = 1.125 # seconds
+FACETS = 4         
+SCANLINE_DATA_SIZE = 937      # pixels in a line
+TICKS_PER_PRISM_FACET = 12500 # ticks per prism facet
+TICKS_START = 4375            # laser start in off state
+JITTER_ALLOW = int(round(TICKS_PER_PRISM_FACET / 3000 ))
+JITTER_THRESH = int(round(TICKS_PER_PRISM_FACET / 400 ))
 SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
 QUEUE_LEN = 8
@@ -91,8 +99,15 @@ class Variables( Structure ):
             ("state", c_uint16),
             ("bit_loop", c_uint8),
             ("last_hsync_bit", c_uint8),
-            ("single_facet", c_uint16),
-            ("current_facet", c_uint16),
+            ("single_facet", c_uint8),
+            ("current_facet", c_uint8),
+            ("ticks_half_period_motor", c_uint16),
+            ("low_thresh_prism", c_uint16),
+            ("high_thresh_prism", c_uint16),
+            ("ticks_start", c_uint16),
+            ("tick_delay", c_uint16),
+            ("spinup_ticks", c_uint32),
+            ("max_wait_stable_ticks", c_uint32)
         ]
 
 
@@ -112,6 +127,17 @@ if SINGLE_FACET:
     params0.single_facet = 1
 else:
     params0.single_facet = 0
+params0.current_facet = 0
+params0.item_size = SCANLINE_ITEM_SIZE
+params0.ringbuffer_size = SCANLINE_ITEM_SIZE * QUEUE_LEN
+params0.start_sync_after = TICKS_PER_PRISM_FACET - JITTER_ALLOW - 1
+params0.ticks_half_period_motor = int(round((TICKS_PER_PRISM_FACET*FACETS/6)/2))
+params0.low_thresh_prism = TICKS_PER_PRISM_FACET - JITTER_THRESH
+params0.high_thresh_prism = TICKS_PER_PRISM_FACET + JITTER_THRESH
+params0.ticks_start = 4375
+params0.tick_delay = TICK_DELAY
+params0.max_wait_stable_ticks = int(round(MAX_WAIT_STABLE_TICKS * PRU_SPEED / TICK_DELAY))
+params0.spinup_ticks = int(round(SPINUP_TICKS * PRU_SPEED / TICK_DELAY))
 
 pruss.core0.run()
 print("running core and uploaded data")

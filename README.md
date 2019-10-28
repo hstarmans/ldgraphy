@@ -19,13 +19,14 @@ digital potentiometer.
 The machine.py file in the machine folder allows you to play around with the machine. The idea is that you work with the machine from the python terminal. The interpolator folder contains a script to calculate the data that needs to be sent to the laser head. The interpolate script cannot be run on the beaglebone as it currently blows through the memory.
 
 ## To Do
-* If no lines are sent, the prism keeps spinning and does not get into sync. You need to sent blank lines. This is strange.
 * if you enable the scan head, you must send some additional stabilization blanks. Ideally, there would be some internal check.
 * if the laser module is on for longer than an hour a buffer overflows
 * check z-limits and z-homing offset, z home pin doesn't work
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz; this might explain why different polygon vendors have such different behavior
-* constants are now loaded into the laser head via laserscribe constants. Ideally you put them in from a central locations and upload them from python. A challenge is that you can't use PRU dram as it is already used by ringloop
+* remove state idle from stabilizer
+* modify bytes in line
+* add updated stabilizer to machine class
 * constants are now sprinkled over the python code and duplicate. This is confusing, also see above.
 
 ## Install notes

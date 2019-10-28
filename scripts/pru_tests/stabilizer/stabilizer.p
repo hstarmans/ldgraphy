@@ -50,10 +50,17 @@
     .u16 state        ; Current state machine state.
     .u8  bit_loop        ; bit loop
     .u8  last_hsync_bit    ; so that we can trigger on an edge
-    .u16 singlefacet
-    .u16 currentfacet
+    .u8 singlefacet
+    .u8 currentfacet
+    .u16 ticks_half_period_motor
+    .u16 low_thresh_prism
+    .u16 high_thresh_prism
+    .u16 ticks_start 
+    .u16 tick_delay
+    .u32 spinup_ticks
+    .u32 max_wait_stable_ticks
 .ends
-.assign Variables, r10, r22, v
+.assign Variables, r10, r26, v
 
 
 ;; Registers
@@ -106,7 +113,7 @@ no_hsync:
     ; Reading this register takes 4 cpu cycles. So we read it and
     ; then do the remaining time with a busy loop.
     LBBO r9, r7, CYCLE_COUNTER_OFFSET, 4 ; get current counter
-    MOV r8, (value - 10)             ; account for some overhead
+    SUB r8, value, 10                    ; account for some overhead
     QBGT REPORT_ERROR_TIME_OVERRUN, r8, r9 ; Error. Optimize state machine!
     SUB r9, r8, r9                 ; remaining CPU cycles
     QBGE end_loop, r9, 1             ; if (i <= 1) goto end_loop
@@ -130,17 +137,10 @@ INIT:
 
     lbco	&v, c24, 0, SIZE(v)
 
-    ;; Populate some constants
-    ;MOV v.singlefacet, r1 ; r1 is written to by python
-    ;MOV v.singlefacet, r1
-    MOV v.currentfacet, 0
-    MOV v.item_size, SCANLINE_ITEM_SIZE
-    MOV v.ringbuffer_size, SCANLINE_ITEM_SIZE * QUEUE_LEN
-    ;; switch the laser full on at this period so that we reliably hit the
-    ;; hsync sensor.
-    MOV v.start_sync_after, TICKS_PER_MIRROR_SEGMENT - JITTER_ALLOW - 1
     
-    
+;; set error to zero
+    MOV r1.b0, ERROR_NONE
+    SBCO r1.b0, CONST_PRUDRAM, ERROR_RESULT_POS, 1
     
 ;; set the ring to zero
     MOV v.item_start, START_RINGBUFFER         ; command byte position in DRAM
@@ -165,11 +165,12 @@ MAIN_LOOP:
     ;; Each of these states must not use more than TICK_DELAY steps
 
     ;; Waiting for Data to arrive
+    ;; STATE IDLE IS NOT NEEDED!!
 STATE_IDLE:
     QBEQ FINISH, r1.b0, CMD_EXIT
     QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
     MOV v.global_time, 0                        ; have monotone increasing time for 1h or so
-    MOV v.wait_countdown, SPINUP_TICKS
+    MOV v.wait_countdown, v.spinup_ticks
     MOV v.last_hsync_time, 0
     MOV v.polygon_time, 0
     MOV v.state, STATE_SPINUP
@@ -188,7 +189,8 @@ STATE_SPINUP:
 spinup_done:
     SET r30.t7                                    ; laser pwm1 on
     SET r30.t5                                  ; laser pwm2 on 
-    MOV v.wait_countdown, MAX_WAIT_STABLE_TICKS
+    ;TODO: max wait stable ticks fout
+    MOV v.wait_countdown, v.max_wait_stable_ticks
     MOV v.state, STATE_WAIT_STABLE
     JMP MAIN_LOOP_NEXT
 
@@ -215,7 +217,7 @@ wait_stable_hsync_seen:
     CLR r30.t5     ; laser pwm2 off
     /* zeller used something different but this didn't work with all motors */
     ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
-    branch_if_not_between wait_stable_not_synced_yet, r1, TICKS_PER_MIRROR_SEGMENT-JITTER_THRESH, TICKS_PER_MIRROR_SEGMENT+JITTER_THRESH
+    branch_if_not_between wait_stable_not_synced_yet, r1, v.low_thresh_prism, v.high_thresh_prism
     MOV v.state, STATE_DATA_WAIT_FOR_SYNC
 wait_stable_not_synced_yet:
     JMP MAIN_LOOP_NEXT
@@ -258,8 +260,7 @@ checkheader:
 
 STATE_WAIT_FOR_DATA_RUN:
     ADD v.wait_countdown, v.wait_countdown, 1
-    MOV r1, TICKS_START
-    QBLT MAIN_LOOP_NEXT, r1, v.wait_countdown
+    QBLT MAIN_LOOP_NEXT, v.ticks_start, v.wait_countdown
     MOV v.state, STATE_DATA_RUN
     JMP MAIN_LOOP_NEXT
 
@@ -315,15 +316,14 @@ rb_advanced:
 MAIN_LOOP_NEXT:
     ;; The current state set whatever state it needed, now wait for the
     ;; end of our period to execute the actions: set GPIO bits.
-    wait_to_next_tick_and_reset TICK_DELAY
+    wait_to_next_tick_and_reset v.tick_delay
     ;; XOR r30, r30, (1<<5)    ; debug output
     ;; Global time update. The global time wraps around after 1h or so
     ;; but it is sufficient for the typical exposure times of a few minutes.
     ADD v.global_time, v.global_time, 1
     ;; time for mirror toggle ?
     ADD v.polygon_time, v.polygon_time, 1
-    MOV r1, (TICKS_PER_MIRROR_SEGMENT*FACETS/6)/2
-    QBLT mirror_toggle_done, r1, v.polygon_time
+    QBLT mirror_toggle_done, v.ticks_half_period_motor, v.polygon_time
     XOR r30, r30, (1<<2)
     MOV v.polygon_time, 0
 mirror_toggle_done:
