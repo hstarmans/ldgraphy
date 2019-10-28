@@ -38,7 +38,6 @@
 // The data per segment is sent in a bit-array. 
 #define SCANLINE_HEADER_SIZE 1   // A single byte containing the command.
 #define ERROR_RESULT_POS     0   // byte 0 = error
-#define SYNC_FAIL_POS        1   // byte 1-4 = sync fails
-#define START_RINGBUFFER     5   // byte 5 ... lines
+#define START_RINGBUFFER     1   // byte 1 ... lines
 
 #endif // LASER_SCRIBE_CONSTANTS_H

@@ -32,7 +32,7 @@ PRU_SPEED = 200E6             # hertz
 SPINUP_TICKS = 1.5            # seconds
 MAX_WAIT_STABLE_TICKS = 1.125 # seconds
 FACETS = 4         
-SCANLINE_DATA_SIZE = 937      # pixels in a line
+SCANLINE_DATA_SIZE = 790      # pixels in a line
 TICKS_PER_PRISM_FACET = 12500 # ticks per prism facet
 TICKS_START = 4375            # laser start in off state
 JITTER_ALLOW = int(round(TICKS_PER_PRISM_FACET / 3000 ))
@@ -41,8 +41,7 @@ SCANLINE_HEADER_SIZE = 1
 SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
 QUEUE_LEN = 8
 ERROR_RESULT_POS = 0
-SYNC_FAIL_POS = 1
-START_RINGBUFFER = 5
+START_RINGBUFFER = 1
 SINGLE_FACET = False
 DURATION = 30/4*2 # seconds
 STEPSPERMM = 76.2
@@ -92,8 +91,6 @@ class Variables( Structure ):
             ("polygon_time", c_uint32),
             ("wait_countdown", c_uint32),
             ("hsync_time", c_uint32),
-            ("last_hsync_time", c_uint32),
-            ("sync_laser_on_time", c_uint32),
             ("item_start", c_uint32),
             ("item_pos", c_uint32),
             ("state", c_uint16),
@@ -112,7 +109,7 @@ class Variables( Structure ):
 
 
 pruss = Icss("/dev/uio/pruss/module")
-irq = Uio("/dev/uio/pruss/irq%d" % IRQ, blocking=False)
+irq = Uio("/dev/uio/pruss/irq%d" % IRQ, blocking=True)
 
 pruss.initialize()
 
@@ -190,8 +187,6 @@ try:
 except IndexError:
     print("ERROR, error out of index")
 
-sync_fails = pruss.core0.dram.map(c_uint32, offset = SYNC_FAIL_POS).value
-print("There have been {} sync fails".format(sync_fails))
 # disable motors
 GPIO.output(y_enable_output, GPIO.HIGH)  
 GPIO.output(polygon_enable, GPIO.HIGH)

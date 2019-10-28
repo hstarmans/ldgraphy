@@ -46,8 +46,6 @@
     .u32 polygon_time
     .u32 wait_countdown    ; countdown used in states  for certain states to finish
     .u32 hsync_time        ; time when we have seen the hsync
-    .u32 last_hsync_time
-    .u32 sync_laser_on_time
     .u32 item_start            ; Start position of current item in ringbuffer
     .u32 item_pos        ; position within item.
     .u16 state        ; Current state machine state.
@@ -63,7 +61,7 @@
     .u32 spinup_ticks
     .u32 max_wait_stable_ticks
 .ends
-.assign Variables, r10, r26, v
+.assign Variables, r10, r24, v
 
 
 ;; Registers
@@ -149,7 +147,7 @@ INIT:
     MOV v.item_start, START_RINGBUFFER         ; command byte position in DRAM
     MOV r1.b0, CMD_EMPTY
 ringbufferzero:
-SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
+    SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
     ADD v.item_start, v.item_start, v.item_size ; advance in ringbuffer
     QBLT ringbufferzero, v.ringbuffer_size, v.item_start ; item_start < rb_sizes
     MOV v.item_start, START_RINGBUFFER    ; Wrap around
@@ -158,10 +156,8 @@ SBCO r1.b0, CONST_PRUDRAM, v.item_start, 1
     start_cpu_cycle_counter
     MOV v.global_time, 0                        ; have monotone increasing time for 1h or so
     MOV v.wait_countdown, v.spinup_ticks
-    MOV v.last_hsync_time, 0
     MOV v.polygon_time, 0
     MOV v.state, STATE_SPINUP
-    MOV v.sync_laser_on_time, 0
     ;; prepare data
     MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
     MOV v.bit_loop, 7 
@@ -200,26 +196,24 @@ STATE_WAIT_STABLE:
     ;; with the laser not properly rotating or no feedback.
     SUB v.wait_countdown, v.wait_countdown, 1
     QBEQ REPORT_ERROR_MIRROR, v.wait_countdown, 0
-    QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time
+    QBLT MAIN_LOOP_NEXT, v.start_sync_after, v.global_time
     SET r30.t6     ; laser pwm1 on
     SET r30.t5     ; laser pwm2 on
     branch_if_hsync wait_stable_hsync_seen
     JMP MAIN_LOOP_NEXT    ; todo: account for cpu-cycles
 wait_stable_hsync_seen:
-    SUB r1, v.hsync_time, v.last_hsync_time
-    MOV v.last_hsync_time, v.hsync_time 
+    MOV v.global_time, 0
     CLR r30.t7     ; laser pwm1 off
     CLR r30.t5     ; laser pwm2 off
-    /* zeller used something different but this didn't work with all motors */
-    ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after ; laser on then
-    branch_if_not_between wait_stable_not_synced_yet, r1, v.low_thresh_prism, v.high_thresh_prism
+    branch_if_not_between wait_stable_not_synced_yet, v.hsync_time, v.low_thresh_prism, v.high_thresh_prism
+
     MOV v.state, STATE_DATA_WAIT_FOR_SYNC
 wait_stable_not_synced_yet:
     JMP MAIN_LOOP_NEXT
 
     ;; Sync step between data lines. This sync step also sets facet counter
 STATE_DATA_WAIT_FOR_SYNC:
-    QBLT MAIN_LOOP_NEXT, v.sync_laser_on_time, v.global_time ; not yet
+    QBLT MAIN_LOOP_NEXT, v.start_sync_after, v.global_time ; not yet
     ;; Now we are close enough to the hsync-block, switch on the laser.
     SET r30.t7     ; laser pwm1 on
     SET r30.t5     ; laser pwm2 on
@@ -227,13 +221,12 @@ wait_for_sync:
     branch_if_hsync wait_for_sync_hsync_seen
     JMP MAIN_LOOP_NEXT
 wait_for_sync_hsync_seen:
-    CLR r30.t7 ; hsync finished, laser pwm1 off
+    MOV v.global_time, 0
+    CLR r30.t7 ; laser pwm1 off
     CLR r30.t5 ; laser pwm2 off
-    MOV v.last_hsync_time, v.hsync_time
-    ADD v.sync_laser_on_time, v.hsync_time, v.start_sync_after
-    ; if single facet is disabled always continue
+    ;; if single facet is disabled always continue
     QBEQ checkheader, v.singlefacet, 0
-    /* if single facet is enabled daterun only on continue on third facet */
+    ;; if single facet is enabled daterun only on continue on third facet
     QBLT reset_facetnumber, v.currentfacet, 2 
     ADD v.currentfacet, v.currentfacet, 1
     JMP MAIN_LOOP_NEXT
