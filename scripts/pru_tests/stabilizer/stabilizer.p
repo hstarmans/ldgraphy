@@ -158,6 +158,7 @@ ringbufferzero:
     MOV v.wait_countdown, v.spinup_ticks
     MOV v.polygon_time, 0
     MOV v.state, STATE_SPINUP
+    MOV v.currentfacet, 0
     ;; prepare data
     MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
     MOV v.bit_loop, 7 

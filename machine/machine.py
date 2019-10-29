@@ -9,7 +9,7 @@ It is also possible to take pictures with a remote camera.
 '''
 from copy import deepcopy
 from time import sleep
-from ctypes import c_uint32, Structure
+from ctypes import c_uint32, c_uint16, c_uint8, Structure
 from os.path import join, dirname, realpath
 import pickle
 import subprocess
@@ -21,22 +21,22 @@ import Adafruit_GPIO.I2C as I2C
 import numpy as np
 from bidict import bidict
 import steppers
-from camera import Camera
+
 
 
 class Machine:
     def __init__(self, camera = False):
         if camera:
+            from camera import Camera
             self.camera = Camera()
+        self.loadconstants()
         self.position = [0, 0, 0]
-        self.bytesinline = 790 
         self.pindictionary()
         self.init_pru()
         self.currentdir = dirname(realpath(__file__))
         self.bin_folder = join(self.currentdir, 'binaries')
         self.laserchannels = 0
         self.configure_pins()
-        self.loadconstants()
         self.motor_spi = [self.init_stepper(label) for label in ['x','y','z']] 
         
         # digipot is used to set laser power
@@ -182,14 +182,35 @@ class Machine:
         '''
         loads COMMANDS and Errors
         '''
+        # commands accepted by scanhead also defined in laserscribe constants
         self.COMMANDS = ['CMD_EMPTY',
                 'CMD_SCAN_DATA', 'CMD_SCAN_DATA_NO_SLED']
         self.COMMANDS += ['CMD_EXIT', 'CMD_DONE']
         self.COMMANDS = bidict(enumerate(self.COMMANDS))
+        # errors accepted by scanhead also defined in laserscribe constants
         self.ERRORS = ['ERROR_NONE',
                 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC']
         self.ERRORS += ['ERROR_TIME_OVERRUN']
         self.ERRORS = bidict(enumerate(self.ERRORS))
+        self.RPM = 2400         # revolutions per minute 
+        self.TICK_DELAY = 100   # cpu cycles in loop
+        self.PRU_SPEED = 200E6  # cpu cycles per second
+        self.SPINUP_TICKS = 1.5 # time in seconds used to spinup prism
+        self.MAX_WAIT_STABLE_TICKS = 1.125   # time in seconds waited for laser stabilization
+        self.FACETS = 4                      # number of sides of prism
+        self.TICKS_PER_PRISM_FACET = 12500   # ticks per prism facet
+        self.TICKS_START = 4375              # laser starts in off state
+        self.SCANLINE_DATA_SIZE = 790        # there are 8 pixels per byte 
+                                             # so TICKS = 8*SCANLINE_DATA_SIZE
+        self.SCANLINE_HEADER_SIZE = 1        # each line starts with a self.COMMAND
+        self.START_RINGBUFFER = 1            # the first byte is an error code
+        self.QUEUE_LEN = 8                   # length of the ringbuffer
+        # length of an item in the ringbuffer in bytes
+        self.SCANLINE_ITEM_SIZE = self.SCANLINE_HEADER_SIZE + self.SCANLINE_DATA_SIZE
+        # the prism is spin up, it is determined if the jitter per prism is within a certain threshold
+        self.JITTER_THRESH = int(round(self.TICKS_PER_PRISM_FACET / 400 ))
+        # after spinup the jitter allow is set smaller this leads to better results
+        self.JITTER_ALLOW = int(round(self.TICKS_PER_PRISM_FACET / 3000 ))
 
 
     def init_stepper(self, drive='x', mA=600, microsteps=16, stealthchop=True):
@@ -396,19 +417,48 @@ class Machine:
         self.pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
         self.pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
         self.pruss.core0.load(join(self.bin_folder, './stabilizer.bin'))
-        # flush memory, in new version of Py-UIO there is a function to do this
-        # prep scanner by writing 8 empty lines to buffer
-        # TODO: this write data is a sort of constant, 
-        #       the 4 zeros are for sync errors which never happens
-        write_data = [self.ERRORS.inv['ERROR_NONE']] + [0]*4
-        empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
-        empty_line += [0]*self.bytesinline
-        write_data += empty_line*8  #QUEE LEN
-        self.pruss.core0.dram.write(write_data)
+        # map and set parameters
+        class Variables( Structure ):
+            _fields_ = [
+                    ("ringbuffer_size", c_uint32),  
+                    ("item_size", c_uint32),
+                    ("start_sync_after", c_uint32),
+                    ("global_time", c_uint32),
+                    ("polygon_time", c_uint32),
+                    ("wait_countdown", c_uint32),
+                    ("hsync_time", c_uint32),
+                    ("item_start", c_uint32),
+                    ("item_pos", c_uint32),
+                    ("state", c_uint16),
+                    ("bit_loop", c_uint8),
+                    ("last_hsync_bit", c_uint8),
+                    ("single_facet", c_uint8),
+                    ("current_facet", c_uint8),
+                    ("ticks_half_period_motor", c_uint16),
+                    ("low_thresh_prism", c_uint16),
+                    ("high_thresh_prism", c_uint16),
+                    ("ticks_start", c_uint16),
+                    ("tick_delay", c_uint16),
+                    ("spinup_ticks", c_uint32),
+                    ("max_wait_stable_ticks", c_uint32)
+                ]
+        params0 = self.pruss.core0.dram.map(Variables)
         if singlefacet:
-            self.pruss.core0.r1 = 1
+            params0.single_facet = 1
         else:
-            self.pruss.core0.r1 = 0
+            params0.single_facet = 0
+        params0.item_size = self.SCANLINE_ITEM_SIZE
+        params0.ringbuffer_size = self.SCANLINE_ITEM_SIZE * self.QUEUE_LEN
+        params0.start_sync_after = self.TICKS_PER_PRISM_FACET - self.JITTER_ALLOW - 1
+        params0.ticks_half_period_motor = int(round((self.TICKS_PER_PRISM_FACET*self.FACETS/6)/2))
+        params0.low_thresh_prism = self.TICKS_PER_PRISM_FACET - self.JITTER_THRESH
+        params0.high_thresh_prism = self.TICKS_PER_PRISM_FACET + self.JITTER_THRESH
+        params0.ticks_start = self.TICKS_START
+        params0.tick_delay = self.TICK_DELAY
+        params0.max_wait_stable_ticks = int(round(self.MAX_WAIT_STABLE_TICKS * self.PRU_SPEED / self.TICK_DELAY))
+        params0.spinup_ticks = int(round(self.SPINUP_TICKS * self.PRU_SPEED / self.TICK_DELAY))
+
+
         self.pruss.core0.run()
         #TODO: add check polygon is enabled and stable
         # if you can't disable does not work
@@ -420,11 +470,7 @@ class Machine:
         receives command at given offset, if byte is None
         start to look for first possible CMD_EMPTY byte
         '''
-        SCANLINE_DATA_SIZE = self.bytesinline
-        SCANLINE_HEADER_SIZE = 1
-        START_RINGBUFFER = 5 
-        QUEUE_LEN = 8
-        SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
+        #TODO: this is probably wrong and needs to be cleaned up
         self.pruss.intc.out_enable_one(self.IRQ) 
         while True:
             result = self.irq.irq_recv()
@@ -435,7 +481,7 @@ class Machine:
         self.pruss.intc.ev_clear_one(self.pruss.intc.out_event[self.IRQ])
         self.pruss.intc.out_enable_one(self.IRQ)
         if not byte: 
-            byte = START_RINGBUFFER
+            byte = self.START_RINGBUFFER
             count = 0
             while True:
                 [command_index] = self.pruss.core0.dram.map(length = 1,
@@ -443,9 +489,9 @@ class Machine:
                 if self.COMMANDS[command_index] == 'CMD_EMPTY':
                     break
                 else:
-                    byte += SCANLINE_ITEM_SIZE
-                if byte > QUEUE_LEN * SCANLINE_DATA_SIZE:
-                    byte = START_RINGBUFFER
+                    byte += self.SCANLINE_ITEM_SIZE
+                if byte > self.QUEUE_LEN * self.SCANLINE_DATA_SIZE:
+                    byte = self.START_RINGBUFFER
                     count += 1
                     if count > 10000:
                         raise Exception("Can't pick" + 
@@ -513,9 +559,8 @@ class Machine:
         '''
         if line_data.dtype != np.uint8:
             raise Exception('Dtype must be uint8')
-        QUEUE_LEN = 8
-        if (len(line_data) < QUEUE_LEN * self.bytesinline 
-                or len(line_data) % self.bytesinline):
+        if (len(line_data) < self.QUEUE_LEN * self.SCANLINE_DATA_SIZE 
+                or len(line_data) % self.SCANLINE_DATA_SIZE):
             raise Exception('Data invalid,' + 
                     'should be longer than ringbuffer.')
         if (line_data.max() < 1 or line_data.max() > 255):
@@ -529,49 +574,45 @@ class Machine:
             GPIO.output(self.pins['y_dir'], GPIO.HIGH)
         else:
             GPIO.output(self.pins['y_dir'], GPIO.LOW)
-        SCANLINE_DATA_SIZE = self.bytesinline
-        SCANLINE_HEADER_SIZE = 1
-        SCANLINE_ITEM_SIZE = SCANLINE_HEADER_SIZE + SCANLINE_DATA_SIZE
-        byte = START_RINGBUFFER = 5
         # prep scanner by writing 8 empty lines to buffer
         # TODO: this write data is a sort of constant, 
         #       the 4 zeros are for sync errors which never happens
         write_data = [self.ERRORS.inv['ERROR_NONE']] + [0]*4
         empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
-        empty_line += [0]*self.bytesinline
-        write_data += empty_line*QUEUE_LEN
+        empty_line += [0]*self.SCANLINE_DATA_SIZE
+        write_data += empty_line*self.QUEUE_LEN
         self.pruss.core0.dram.write(write_data)
         # receive current position
         byte = self.receive_command(None)
-        while byte != START_RINGBUFFER:
-            byte += SCANLINE_ITEM_SIZE
-            if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
-                byte = START_RINGBUFFER
+        while byte != self.START_RINGBUFFER:
+            byte += self.SCANLINE_ITEM_SIZE
+            if byte > self.SCANLINE_DATA_SIZE * self.QUEUE_LEN:
+                byte = self.START_RINGBUFFER
                 break
             self.pruss.core0.dram.write(empty_line, offset = byte) 
             self.receive_command(byte, True)
 
-        for scanline in range(0, len(line_data)//self.bytesinline):
+        for scanline in range(0, len(line_data)//self.SCANLINE_DATA_SIZE):
             self.receive_command(byte, True)
             # you start the picture where the laser is just off again
-            if scanline == QUEUE_LEN and takepicture:
+            if scanline == self.QUEUE_LEN and takepicture:
                 self.camera.get_spotinfo(wait=False)
-            extra_data = list(line_data[scanline*self.bytesinline
-                :(scanline+1)*self.bytesinline])
+            extra_data = list(line_data[scanline*self.SCANLINE_DATA_SIZE
+                :(scanline+1)*self.SCANLINE_DATA_SIZE])
             write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA']] 
             + extra_data)
             self.pruss.core0.dram.write(write_data, offset = byte)
-            byte += SCANLINE_ITEM_SIZE
-            if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
-                byte = START_RINGBUFFER
+            byte += self.SCANLINE_ITEM_SIZE
+            if byte > self.SCANLINE_DATA_SIZE * self.QUEUE_LEN:
+                byte = self.START_RINGBUFFER
             for counter in range(1, multiplier):
                 self.receive_command(byte)
                 write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
                     ] + extra_data)
                 self.pruss.core0.dram.write(write_data, offset = byte)
-                byte += SCANLINE_ITEM_SIZE
-                if byte > SCANLINE_DATA_SIZE * QUEUE_LEN:
-                    byte = START_RINGBUFFER
+                byte += self.SCANLINE_ITEM_SIZE
+                if byte > self.SCANLINE_DATA_SIZE * self.QUEUE_LEN:
+                    byte = self.START_RINGBUFFER
 
 
         if takepicture: 

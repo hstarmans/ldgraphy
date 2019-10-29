@@ -19,12 +19,13 @@ digital potentiometer.
 The machine.py file in the machine folder allows you to play around with the machine. The idea is that you work with the machine from the python terminal. The interpolator folder contains a script to calculate the data that needs to be sent to the laser head. The interpolate script cannot be run on the beaglebone as it currently blows through the memory.
 
 ## To Do
-* if you enable the scan head, you must send some additional stabilization blanks. Ideally, there would be some internal check.
+* if you enable the scan head, you give it an additional 4 seconds stabilization time. Ideally, there would be some extra internal check after the threshold.
 * check z-limits and z-homing offset, z home pin doesn't work
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz; this might explain why different polygon vendors have such different behavior
-* add updated stabilizer to machine class
-* constants are now sprinkled over the python code and duplicate. This is confusing, also see above.
+* test code added to machine class
+* constants script from stabilizer should be integrated in machine class
+* the way you look for where the laser head is in the ring buffer is probably not needed and should be removed
 
 ## Install notes
 
