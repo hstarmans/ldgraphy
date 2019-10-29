@@ -23,9 +23,8 @@ The machine.py file in the machine folder allows you to play around with the mac
 * check z-limits and z-homing offset, z home pin doesn't work
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz; this might explain why different polygon vendors have such different behavior
-* test code added to machine class
-* constants script from stabilizer should be integrated in machine class
 * the way you look for where the laser head is in the ring buffer is probably not needed and should be removed
+* constants script from stabilizer should be integrated in machine class
 
 ## Install notes
 

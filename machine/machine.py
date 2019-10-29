@@ -203,7 +203,7 @@ class Machine:
         self.SCANLINE_DATA_SIZE = 790        # there are 8 pixels per byte 
                                              # so TICKS = 8*SCANLINE_DATA_SIZE
         self.SCANLINE_HEADER_SIZE = 1        # each line starts with a self.COMMAND
-        self.START_RINGBUFFER = 1            # the first byte is an error code
+        self.START_RINGBUFFER = 1            # the zero byte is an error code, ringbuffer starts at 1
         self.QUEUE_LEN = 8                   # length of the ringbuffer
         # length of an item in the ringbuffer in bytes
         self.SCANLINE_ITEM_SIZE = self.SCANLINE_HEADER_SIZE + self.SCANLINE_DATA_SIZE
@@ -511,7 +511,7 @@ class Machine:
             return command_index
 
 
-    def disable_scanhead(self, byte=5):
+    def disable_scanhead(self):
         '''
         disables scanhead
 
@@ -519,7 +519,7 @@ class Machine:
         '''
     
         data = [self.COMMANDS.inv['CMD_EXIT']]
-        self.pruss.core0.dram.write(data, offset = byte)
+        self.pruss.core0.dram.write(data, offset = self.START_RINGBUFFER)
         while not self.pruss.core0.halted:
             pass
         GPIO.output(self.pins['prism_enable'], GPIO.HIGH)
@@ -577,7 +577,7 @@ class Machine:
         # prep scanner by writing 8 empty lines to buffer
         # TODO: this write data is a sort of constant, 
         #       the 4 zeros are for sync errors which never happens
-        write_data = [self.ERRORS.inv['ERROR_NONE']] + [0]*4
+        write_data = [self.ERRORS.inv['ERROR_NONE']]
         empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
         empty_line += [0]*self.SCANLINE_DATA_SIZE
         write_data += empty_line*self.QUEUE_LEN

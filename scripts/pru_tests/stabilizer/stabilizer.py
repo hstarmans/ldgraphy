@@ -93,7 +93,31 @@ pruss.intc.ev_clear_one(PRU0_ARM_INTERRUPT)
 pruss.intc.ev_enable_one(PRU0_ARM_INTERRUPT)
 
 pruss.core0.load('./stabilizer.bin')
-
+# map and set parameters
+class Variables( Structure ):
+    _fields_ = [
+            ("ringbuffer_size", c_uint32),  
+            ("item_size", c_uint32),
+            ("start_sync_after", c_uint32),
+            ("global_time", c_uint32),
+            ("polygon_time", c_uint32),
+            ("wait_countdown", c_uint32),
+            ("hsync_time", c_uint32),
+            ("item_start", c_uint32),
+            ("item_pos", c_uint32),
+            ("state", c_uint16),
+            ("bit_loop", c_uint8),
+            ("last_hsync_bit", c_uint8),
+            ("single_facet", c_uint8),
+            ("current_facet", c_uint8),
+            ("ticks_half_period_motor", c_uint16),
+            ("low_thresh_prism", c_uint16),
+            ("high_thresh_prism", c_uint16),
+            ("ticks_start", c_uint16),
+            ("tick_delay", c_uint16),
+            ("spinup_ticks", c_uint32),
+            ("max_wait_stable_ticks", c_uint32)
+        ]
 params0 = pruss.core0.dram.map(Variables)
 if SINGLE_FACET:
     params0.single_facet = 1
