@@ -15,7 +15,7 @@ FACETS_IN_LANE = 5377
 LANEWIDTH = 8.34751
 BYTES_IN_LINE = 790
 MULTIPLIER = 1
-MOVE = True
+MOVE = False
 
 prototype = Machine()
 
