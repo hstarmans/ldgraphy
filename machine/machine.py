@@ -24,6 +24,7 @@ import steppers
 
 
 
+
 class Machine:
     def __init__(self, camera = False):
         if camera:
@@ -38,7 +39,6 @@ class Machine:
         self.laserchannels = 0
         self.configure_pins()
         self.motor_spi = [self.init_stepper(label) for label in ['x','y','z']] 
-        
         # digipot is used to set laser power
         self.digipot = I2C.get_i2c_device(0x28, busnum=2)
 
@@ -114,12 +114,11 @@ class Machine:
             _fields_ = [
                     ("power", c_uint32)
         ]
-        params0 = self.pruss.core0.dram.map(Params)
-        params0.power = int(round(channels))
+        variables = self.pruss.core0.dram.map(Params)
+        variables.power = int(round(channels))
         self.pruss.core0.run()
         while not self.pruss.core0.halted:
             pass
-        
         self._laserchannels = int(round(channels))
 
 
@@ -442,22 +441,21 @@ class Machine:
                     ("spinup_ticks", c_uint32),
                     ("max_wait_stable_ticks", c_uint32)
                 ]
-        params0 = self.pruss.core0.dram.map(Variables)
+        variables = self.pruss.core0.dram.map(Variables)
         if singlefacet:
-            params0.single_facet = 1
+            variables.single_facet = 1
         else:
-            params0.single_facet = 0
-        params0.item_size = self.SCANLINE_ITEM_SIZE
-        params0.ringbuffer_size = self.SCANLINE_ITEM_SIZE * self.QUEUE_LEN
-        params0.start_sync_after = self.TICKS_PER_PRISM_FACET - self.JITTER_ALLOW - 1
-        params0.ticks_half_period_motor = int(round((self.TICKS_PER_PRISM_FACET*self.FACETS/6)/2))
-        params0.low_thresh_prism = self.TICKS_PER_PRISM_FACET - self.JITTER_THRESH
-        params0.high_thresh_prism = self.TICKS_PER_PRISM_FACET + self.JITTER_THRESH
-        params0.ticks_start = self.TICKS_START
-        params0.tick_delay = self.TICK_DELAY
-        params0.max_wait_stable_ticks = int(round(self.MAX_WAIT_STABLE_TICKS * self.PRU_SPEED / self.TICK_DELAY))
-        params0.spinup_ticks = int(round(self.SPINUP_TICKS * self.PRU_SPEED / self.TICK_DELAY))
-
+            variables.single_facet = 0
+        variables.item_size = self.SCANLINE_ITEM_SIZE
+        variables.ringbuffer_size = self.SCANLINE_ITEM_SIZE * self.QUEUE_LEN
+        variables.start_sync_after = self.TICKS_PER_PRISM_FACET - self.JITTER_ALLOW - 1
+        variables.ticks_half_period_motor = int(round((self.TICKS_PER_PRISM_FACET*self.FACETS/6)/2))
+        variables.low_thresh_prism = self.TICKS_PER_PRISM_FACET - self.JITTER_THRESH
+        variables.high_thresh_prism = self.TICKS_PER_PRISM_FACET + self.JITTER_THRESH
+        variables.ticks_start = self.TICKS_START
+        variables.tick_delay = self.TICK_DELAY
+        variables.max_wait_stable_ticks = int(round(self.MAX_WAIT_STABLE_TICKS * self.PRU_SPEED / self.TICK_DELAY))
+        variables.spinup_ticks = int(round(self.SPINUP_TICKS * self.PRU_SPEED / self.TICK_DELAY))
 
         self.pruss.core0.run()
         #TODO: add check polygon is enabled and stable
@@ -467,11 +465,16 @@ class Machine:
 
     def receive_command(self, byte = None, check = False):
         '''
-        receives command at given offset, if byte is None
-        start to look for first possible CMD_EMPTY byte
+        receives command at given offset
+
+        :param byte; byte to read after trigger is received this is the command
+        :param check; check wether the command equals command empty
         '''
-        #TODO: this is probably wrong and needs to be cleaned up
+        if byte == None:
+            byte = self.START_RINGBUFFER
+
         self.pruss.intc.out_enable_one(self.IRQ) 
+        # while loop is used in case irc_recv call is non-blocking
         while True:
             result = self.irq.irq_recv()
             if result:
@@ -480,35 +483,15 @@ class Machine:
                 sleep(1E-3)
         self.pruss.intc.ev_clear_one(self.pruss.intc.out_event[self.IRQ])
         self.pruss.intc.out_enable_one(self.IRQ)
-        if not byte: 
-            byte = self.START_RINGBUFFER
-            count = 0
-            while True:
-                [command_index] = self.pruss.core0.dram.map(length = 1,
+        [command_index] = self.pruss.core0.dram.map(length = 1,
                                     offset = byte)
-                if self.COMMANDS[command_index] == 'CMD_EMPTY':
-                    break
-                else:
-                    byte += self.SCANLINE_ITEM_SIZE
-                if byte > self.QUEUE_LEN * self.SCANLINE_DATA_SIZE:
-                    byte = self.START_RINGBUFFER
-                    count += 1
-                    if count > 10000:
-                        raise Exception("Can't pick" + 
-                                " up with ongong scan")
-            return byte
-        else:
-            [command_index] = self.pruss.core0.dram.map(length = 1,
-                                    offset = byte)
-            if check:
-                for i in range(1,10):
-                    [command_index] = self.pruss.core0.dram.map(
-                            length = 1, offset = byte)
-                    if self.COMMANDS[command_index] == 'CMD_EMPTY':
-                        break
-                if i == 10:
-                    raise Exception('Check failed')
-            return command_index
+
+        if check:
+            if self.COMMANDS[command_index] != 'CMD_EMPTY':
+                raise Exception('Command not empty, you could overwrite line' +
+                                'not written to substrate yet.')
+        
+        return command_index
 
 
     def disable_scanhead(self):
@@ -559,6 +542,7 @@ class Machine:
         '''
         if line_data.dtype != np.uint8:
             raise Exception('Dtype must be uint8')
+        #TODO: doesn't have to be longer than ringbuffer
         if (len(line_data) < self.QUEUE_LEN * self.SCANLINE_DATA_SIZE 
                 or len(line_data) % self.SCANLINE_DATA_SIZE):
             raise Exception('Data invalid,' + 
@@ -574,24 +558,13 @@ class Machine:
             GPIO.output(self.pins['y_dir'], GPIO.HIGH)
         else:
             GPIO.output(self.pins['y_dir'], GPIO.LOW)
-        # prep scanner by writing 8 empty lines to buffer
-        # TODO: this write data is a sort of constant, 
-        #       the 4 zeros are for sync errors which never happens
-        write_data = [self.ERRORS.inv['ERROR_NONE']]
-        empty_line =  [self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']]
+        
+        # cleans up ring buffer just in case
+        empty_line =  [self.COMMANDS.inv['CMD_EMPTY']]
         empty_line += [0]*self.SCANLINE_DATA_SIZE
-        write_data += empty_line*self.QUEUE_LEN
-        self.pruss.core0.dram.write(write_data)
-        # receive current position
-        byte = self.receive_command(None)
-        while byte != self.START_RINGBUFFER:
-            byte += self.SCANLINE_ITEM_SIZE
-            if byte > self.SCANLINE_DATA_SIZE * self.QUEUE_LEN:
-                byte = self.START_RINGBUFFER
-                break
-            self.pruss.core0.dram.write(empty_line, offset = byte) 
-            self.receive_command(byte, True)
+        self.pruss.core0.dram.write(empty_line, offset = self.START_RINGBUFFER)
 
+        byte = self.START_RINGBUFFER
         for scanline in range(0, len(line_data)//self.SCANLINE_DATA_SIZE):
             self.receive_command(byte, True)
             # you start the picture where the laser is just off again
@@ -613,7 +586,6 @@ class Machine:
                 byte += self.SCANLINE_ITEM_SIZE
                 if byte > self.SCANLINE_DATA_SIZE * self.QUEUE_LEN:
                     byte = self.START_RINGBUFFER
-
 
         if takepicture: 
             return self.camera.get_answer()

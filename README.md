@@ -60,7 +60,6 @@ The binary with laserdata can be created from an image with [interpolator.py](ht
 * check z-limits and z-homing offset, z home pin doesn't work
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz; this might explain why different polygon vendors have such different behavior
-* the way you look for where the laser head is in the ring buffer is probably not needed and should be removed
 * constants script from stabilizer should be integrated in machine class
 
 ## Install notes
@@ -130,7 +129,7 @@ The interpolator cannot be run on the beaglebone and requires imagemagick.
 sudo apt install imagemagick
 ```
 If you want to create a slicer for 3D models. I would recommend the python bindings for [VTK](https://vtk.org/).
-You should find examples for it if you back in the git history. It has been removed for now.
+You should find examples for it if you look in the git history. It has been removed for now.
 
 ## Pins
 The status of a pin can be obtained via 
