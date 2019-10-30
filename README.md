@@ -7,16 +7,53 @@ A process known as Laser Direct Imaging. <br>
 
 <img src="https://cdn.hackaday.io/images/7106161566426847098.jpg" align="center" height="300"/>
 
-The code is based upon [LDGraphy](http://ldgraphy.org/). 
+The bill of materials (BOM) and links to FreeCad and PCB designs can be found on [Hackaday](https://hackaday.io/project/21933-open-hardware-fast-high-resolution-laser).
 
 
-The BOM of the scan head can be found on [Hackaday](https://hackaday.io/project/21933-open-hardware-fast-high-resolution-laser).
+## Status
+It is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner. A resolution below 100 micrometers can be obtained. The stepper motors can be moved and homed via the limit switches. The power of the laser can be set via a digital potentiometer.
+An exposure requires the following code, see [test.py](https://github.com/hstarmans/ldgraphy/blob/master/machine/test.py).
+```python
+import numpy as np
+from machine import Machine
+from time import sleep
 
+FILENAME = 'test.bin' 
+FACETS_IN_LANE = 5377
+LANEWIDTH = 8.34751
+BYTES_IN_LINE = 790
+MULTIPLIER = 1
 
-## Work in Progress
-The project is work on progress. Currently, it is possible to reach a phase-locked loop with the Hexastorm and sent lines to the scanner via Python 3. A resolution below 100 micrometers can be obtained. The stepper motors can be moved and homed via the limit switches. The scanhad is mounted on a frame. The power of the laser can be set via a 
-digital potentiometer.
-The machine.py file in the machine folder allows you to play around with the machine. The idea is that you work with the machine from the python terminal. The interpolator folder contains a script to calculate the data that needs to be sent to the laser head. The interpolate script cannot be run on the beaglebone as it currently blows through the memory.
+prototype = Machine()
+print("Homing x")
+prototype.home('x')
+print("Homing y")
+prototype.home('y')
+print("Moving to start")
+prototype.move([prototype.position[0], prototype.position[1]+70, 0])
+print("Reading binary")
+data = np.fromfile(FILENAME, dtype = np.uint8)
+bytes_inlane = FACETS_IN_LANE * BYTES_IN_LINE
+prototype.enable_scanhead()
+for lane in range(1, round(len(data)/(bytes_inlane))):
+    print("Exposing lane {}".format(lane))
+    if lane > 0:
+        print("Moving in x-direction for next lane")
+        prototype.move([prototype.position[0]+LANEWIDTH, prototype.position[1], 0])
+    if lane % 2 == 1:
+        direction = False 
+        print("Start exposing forward lane")
+    else:
+        direction = True 
+        print("Start exposing back lane")
+    line_data = data[lane*bytes_inlane:(lane+1)*bytes_inlane]
+    # reverse, as exposure is inversed
+    line_data = line_data[::-1]
+    prototype.expose(line_data, direction, MULTIPLIER, move=True)
+prototype.disable_scanhead()
+print("Finished exposure")
+```
+The binary with laserdata can be created from an image with [interpolator.py](https://github.com/hstarmans/ldgraphy/blob/master/interpolator/interpolator.py). The binary can not be created on the beaglebone as the script requires a lot of memory.
 
 ## To Do
 * if you enable the scan head, you give it an additional 4 seconds stabilization time. Ideally, there would be some extra internal check after the threshold.
@@ -31,7 +68,7 @@ The machine.py file in the machine folder allows you to play around with the mac
 ### Image used
 The following image was used https://rcn-ee.net/rootfs/bb.org/testing/2019-09-08/stretch-iot/bone-debian-9.10-iot-armhf-2019-09-08-4gb.img.xz
 
-### Steps
+### Install steps
 Check wether the uio_pruss driver is loaded.
 ```
 lsmod | grep uio
@@ -63,9 +100,9 @@ If this doesn't change, your old bootloader in the eMMC might be blocking u-boot
 ```
 sudo dd if=/dev/zero of=/dev/mmcblk1 bs=1M count=10
 ```
-Install wheel, Adafruit_BBIO, Adafruit_GPIO and bidict.
+Install wheel, numpy, Adafruit_BBIO, Adafruit_GPIO and bidict.
 ```
-pip3 install Adafruit_BBIO Adafruit_GPIO bidict
+pip3 install wheel numpy Adafruit_BBIO Adafruit_GPIO bidict
 ```
 Clone [py-uio](https://github.com/mvduin/py-uio) and copy `uio-pruss.rules` file to `/etc/udev/rules.d/` and reboot.
 ```
@@ -88,6 +125,12 @@ Hexastorm works with cape universal. Ensure you allow overlays at ```/boot/uEnv.
 ```
 config-pin -f hexastorm.bbio
 ```
+The interpolator cannot be run on the beaglebone and requires imagemagick.
+```
+sudo apt install imagemagick
+```
+If you want to create a slicer for 3D models. I would recommend the python bindings for [VTK](https://vtk.org/).
+You should find examples for it if you back in the git history. It has been removed for now.
 
 ## Pins
 The status of a pin can be obtained via 
@@ -99,11 +142,5 @@ A good pinout view of the [beagle bone](https://beagleboard.org/bone) is availab
 [P9 header](http://exploringbeaglebone.com/wp-content/uploads/resources/BBBP9Header.pdf) <br/>
 
 
-## Slicer
-The STL capabilities of the slicer have been removed for now. The slicer used [VTK](https://vtk.org/).
-Look into the git history for inspiration.
-```
-sudo apt install imagemagick
-```
 
 [case-pic]: https://www.hexastorm.com/static/laserscanner.jpg
