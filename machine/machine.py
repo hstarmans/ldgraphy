@@ -191,23 +191,26 @@ class Machine:
                 'ERROR_DEBUG_BREAK', 'ERROR_MIRROR_SYNC']
         self.ERRORS += ['ERROR_TIME_OVERRUN']
         self.ERRORS = bidict(enumerate(self.ERRORS))
+
+        #TODO: place this in a dictionary or a named tuple
+
         # key variables
-        RPM = 2400                           # revolutions per minute 
+        self.RPM = 2400                           # revolutions per minute 
         self.TICK_DELAY = 100                # cpu cycles in loop
         PRU_SPEED = 200E6                    # cpu cycles per second
-        FACETS = 4                           # number of sides of prism
+        self.FACETS = 4                           # number of sides of prism
         self.TICKS_START = 4375              # laser starts in off state
         self.SCANLINE_DATA_SIZE = 790        # there are 8 pixels per byte 
                                              # so TICKS = 8*SCANLINE_DATA_SIZE
         # dependent variables
         self.TICKS_PER_PRISM_FACET = round(PRU_SPEED//  # ticks per prism facet
-        (self.TICK_DELAY*(RPM*FACETS)/60)) 
+        (self.TICK_DELAY*(self.RPM*self.FACETS)/60)) 
         # time in seconds used to spinup prism
         self.SPINUP_TICKS = round(1.5 * PRU_SPEED / self.TICK_DELAY) 
         # time in seconds waited for laser stabilization
         self.MAX_WAIT_STABLE_TICKS = round(1.125 * PRU_SPEED / self.TICK_DELAY) 
         # ticks per half period of prism motor
-        self.TICKS_HALF_PERIOD_MOTOR=int(round((self.TICKS_PER_PRISM_FACET*FACETS/6)/2))
+        self.TICKS_HALF_PERIOD_MOTOR=int(round((self.TICKS_PER_PRISM_FACET*self.FACETS/6)/2))
         self.SCANLINE_HEADER_SIZE = 1        # each line starts with a self.COMMAND
         self.START_RINGBUFFER = 1            # the zero byte is an error code, ringbuffer starts at 1
         self.QUEUE_LEN = 8                   # length of the ringbuffer
@@ -218,11 +221,12 @@ class Machine:
         # after spinup the jitter allow is set smaller this leads to better results
         self.JITTER_ALLOW = round(self.TICKS_PER_PRISM_FACET / 3000 )
 
+        self.STEPSPERMM = {'x': 76.2, 'y': 76.2, 'z': 1600}
         # These things are needed in interpolator
-        #SLED_SPEED = 1/STEPSPERMM*(RPM*FACETS/60)
+        self.SLED_SPEED = 1/self.STEPSPERMM['y']*(self.RPM*self.FACETS/60)
         #print("Sled speed is fixed at {} mm/s".format(SLED_SPEED))
         #print("Laser freq is {} Hz".format(200e6/TICK_DELAY))
-
+        
 
 
     def init_stepper(self, drive='x', mA=600, microsteps=16, stealthchop=True):
@@ -284,7 +288,7 @@ class Machine:
         :param core; pru core map parameters to
         '''
         try:
-            steps_per_mm = {'x': 76.2, 'y': 76.2, 'z': 1600}[axis]
+            steps_per_mm = self.STEPSPERMM[axis]
         except KeyError:
             raise Exception("Axis {} invalid".format(axis))
 
