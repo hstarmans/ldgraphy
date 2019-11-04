@@ -26,7 +26,7 @@ import steppers
 
 
 class Machine:
-    def __init__(self, camera = False):
+    def __init__(self, stepper=True, camera = False):
         if camera:
             from camera import Camera
             self.camera = Camera()
@@ -38,7 +38,8 @@ class Machine:
         self.bin_folder = join(self.currentdir, 'binaries')
         self.laserchannels = 0
         self.configure_pins()
-        self.motor_spi = [self.init_stepper(label) for label in ['x','y','z']] 
+        if stepper:
+            self.motor_spi = [self.init_stepper(label) for label in ['x','y','z']] 
         # digipot is used to set laser power
         self.digipot = I2C.get_i2c_device(0x28, busnum=2)
 
