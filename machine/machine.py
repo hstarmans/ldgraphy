@@ -348,7 +348,8 @@ class Machine:
                 raise Exception("Homing y failed")
         elif direction == 'z':
             self.write_params('z', 300, speed, core=1)
-            GPIO.output(self.pins['z_dir'], GPIO.LOW)
+            # home in the down direction
+            GPIO.output(self.pins['z_dir'], GPIO.HIGH)
             self.pruss.core1.load(join(self.bin_folder,
                 'home_z.bin'))
             self.pruss.core1.run()
@@ -407,7 +408,7 @@ class Machine:
                 pass
 
         if displacement[2]:
-            direction = GPIO.HIGH if displacement[2] > 0 else GPIO.LOW
+            direction = GPIO.LOW if displacement[2] > 0 else GPIO.HIGH
             GPIO.output(self.pins['z_dir'], direction)
             self.write_params('z', abs(displacement[2]), speed, core=1)
             self.pruss.core1.load(join(self.bin_folder, 'move_z.bin'))
