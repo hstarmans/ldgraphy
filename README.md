@@ -59,7 +59,6 @@ The binary with laserdata can be created from an image with [interpolator.py](ht
 * if you enable the scan head, you give it an additional 4 seconds stabilization time. Ideally, there would be some extra internal check after the threshold.
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz; this might explain why different polygon vendors have such different behavior
-* check z-limits and z-homing offset, z home pin doesn't work
 
 ## Install notes
 
