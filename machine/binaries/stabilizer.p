@@ -237,7 +237,7 @@ reset_facetnumber:
 checkheader:
     LBCO r1.b0, CONST_PRUDRAM, v.item_start, 1 ; read header
     QBEQ FINISH, r1.b0, CMD_EXIT
-    QBEQ MAIN_LOOP_NEXT, r1.b0, CMD_EMPTY
+    QBEQ advance_sled_done, r1.b0, CMD_EMPTY
     ;;TODO: what if command is invalid!!?, should map to cmd_scan_data
     MOV v.item_pos, SCANLINE_HEADER_SIZE         ; Start after header
     MOV v.bit_loop, 7

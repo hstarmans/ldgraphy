@@ -15,8 +15,9 @@ import numpy as np
 from machine import Machine
 from time import sleep
 
+MOVE = False 
 
-prototype = Machine()
+prototype = Machine(stepper=MOVE)
 
 FILENAME = 'test.bin' 
 FACETS_IN_LANE = 100
@@ -30,7 +31,6 @@ LINES_PER_ZONE = round((ZONE_THICKNESS/prototype.SLED_SPEED)*(prototype.RPM/60)*
 # ...  (repeated until height is filled)
 TOTAL_LANES = 4
 MULTIPLIER = 1
-MOVE = False
 
 # expose data creation
 # downsample factor in slicer is 5, so 5x1 is one pixel
@@ -38,10 +38,10 @@ data_byte = [int('11111000', 2)]*1+[int('00000000',2)]*31
 data_line = (data_byte*(prototype.SCANLINE_DATA_SIZE//len(data_byte)) + 
         prototype.SCANLINE_DATA_SIZE%len(data_byte)*[int('00000000',2)])
 blank_line = [0]*prototype.SCANLINE_DATA_SIZE
-block = data_line*LINES_PER_ZONE + blank_line * LINES_PER_ZONE
-print("length block is {}".format(len(block)))
-lane_data = np.array(round(HEIGHT/(2*ZONE_THICKNESS))*block, dtype='uint8')
-
+forward_block = data_line*LINES_PER_ZONE + blank_line * LINES_PER_ZONE
+forwardlane_data = np.array(round(HEIGHT/(2*ZONE_THICKNESS))*forward_block, dtype='uint8')
+backward_block = blank_line * LINES_PER_ZONE + data_line*LINES_PER_ZONE
+backwardlane_data = np.array(round(HEIGHT/(2*ZONE_THICKNESS))*backward_block, dtype='uint8')
 
 if MOVE:
     print("Homing x")
@@ -49,7 +49,8 @@ if MOVE:
     print("Homing y")
     prototype.home('y')
     print("Moving to start")
-    prototype.move([prototype.position[0], prototype.position[1]+70, 0])
+    prototype.move([prototype.position[0], prototype.position[1]+70, prototype.position[2]])
+
 
 prototype.enable_scanhead()
 for lane in range(1, TOTAL_LANES):
@@ -57,15 +58,14 @@ for lane in range(1, TOTAL_LANES):
     if lane > 0:
         print("Moving in x-direction for next lane")
         if MOVE:
-            prototype.move([prototype.position[0]+LANEWIDTH, prototype.position[1], 0])
+            prototype.move([prototype.position[0]+LANEWIDTH, prototype.position[1], prototype.position[2]])
     if lane % 2 == 1:
-        direction = False 
         print("Start exposing forward lane")
-        prototype.expose(lane_data, direction, multiplier = lane, move = MOVE)
+        direction = False 
     else:
-        direction = True # disabled direction
         print("Start exposing back lane")
-        prototype.expose(lane_data[::-1], direction, multiplier = lane, move = MOVE)
+        direction = True 
+    prototype.expose(backwardlane_data, direction, multiplier = lane, move = MOVE)
 
 prototype.disable_scanhead()
 print("Finished exposure")

@@ -56,7 +56,8 @@ print("Finished exposure")
 The binary with laserdata can be created from an image with [interpolator.py](https://github.com/hstarmans/ldgraphy/blob/master/interpolator/interpolator.py). The binary can not be created on the beaglebone as the script requires a lot of memory.
 
 ## To Do
-* if you enable the scan head, you give it an additional 4 seconds stabilization time. Ideally, there would be some extra internal check after the threshold.
+* if you enable the scan head, you give it an additional 4 seconds stabilization time. Ideally, add a counter so it has to pass the threshold multiple times
+* there is no way to determines the scanhead missed the photodiode during exposure
 * use asyncio loop for stabilizer
 * check the speed of polygon in hertz; this might explain why different polygon vendors have such different behavior
 

@@ -505,9 +505,11 @@ class Machine:
                                     offset = byte)
 
         if check:
-            if self.COMMANDS[command_index] != 'CMD_EMPTY':
-                raise Exception('Command not empty, you could overwrite line' +
-                                'not written to substrate yet.')
+            received_command = self.COMMANDS[command_index]
+            if  received_command != 'CMD_EMPTY':
+                error = ('Command not empty but {} '.format(received_command) +
+                         'you could overwrite line not written to substrate yet.')
+                raise Exception(error)
         
         return command_index
 
@@ -560,11 +562,9 @@ class Machine:
         '''
         if line_data.dtype != np.uint8:
             raise Exception('Dtype must be uint8')
-        #TODO: doesn't have to be longer than ringbuffer
-        if (len(line_data) < self.QUEUE_LEN * self.SCANLINE_DATA_SIZE 
-                or len(line_data) % self.SCANLINE_DATA_SIZE):
-            raise Exception('Data invalid,' + 
-                    'should be longer than ringbuffer.')
+        if len(line_data) % self.SCANLINE_DATA_SIZE:
+            raise Exception('Data invalid, length should be multilple'
+                            + ' of scanline size')
         if (line_data.max() < 1 or line_data.max() > 255):
             raise Exception('Data invalid, values out of range.')
         if move:
@@ -577,29 +577,22 @@ class Machine:
         else:
             GPIO.output(self.pins['y_dir'], GPIO.LOW)
         
-        # cleans up ring buffer just in case
-        empty_line =  [self.COMMANDS.inv['CMD_EMPTY']]
-        empty_line += [0]*self.SCANLINE_DATA_SIZE
-        self.pruss.core0.dram.write(empty_line, offset = self.START_RINGBUFFER)
-
         byte = self.START_RINGBUFFER
+
         for scanline in range(0, len(line_data)//self.SCANLINE_DATA_SIZE):
-            self.receive_command(byte, True)
-            # you start the picture where the laser is just off again
-            if scanline == self.QUEUE_LEN and takepicture:
-                self.camera.get_spotinfo(wait=False)
-            extra_data = list(line_data[scanline*self.SCANLINE_DATA_SIZE
-                :(scanline+1)*self.SCANLINE_DATA_SIZE])
-            write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA']] 
-            + extra_data)
-            self.pruss.core0.dram.write(write_data, offset = byte)
-            byte += self.SCANLINE_ITEM_SIZE
-            if byte > self.SCANLINE_DATA_SIZE * self.QUEUE_LEN:
-                byte = self.START_RINGBUFFER
-            for counter in range(1, multiplier):
-                self.receive_command(byte)
-                write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']
-                    ] + extra_data)
+            for counter in range(0, multiplier):
+                self.receive_command(byte, True)
+                # you start the picture where the laser is just off again
+                if scanline == self.QUEUE_LEN and takepicture:
+                    self.camera.get_spotinfo(wait=False)
+                extra_data = list(line_data[scanline*self.SCANLINE_DATA_SIZE
+                    :(scanline+1)*self.SCANLINE_DATA_SIZE])
+                if counter == 0:
+                    write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA']] 
+                    + extra_data)
+                else:
+                    write_data = ([self.COMMANDS.inv['CMD_SCAN_DATA_NO_SLED']] 
+                    + extra_data)
                 self.pruss.core0.dram.write(write_data, offset = byte)
                 byte += self.SCANLINE_ITEM_SIZE
                 if byte > self.SCANLINE_DATA_SIZE * self.QUEUE_LEN:
@@ -607,3 +600,5 @@ class Machine:
 
         if takepicture: 
             return self.camera.get_answer()
+        
+        return byte
