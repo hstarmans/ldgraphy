@@ -1,5 +1,6 @@
 # Hexastorm - Laser Direct Lithography
 
+**Beaglebone is no longer supported, activity has been moved to the [FPGA branch](https://github.com/hstarmans/hexastorm).**
 
 https://www.hexastorm.com/
 
